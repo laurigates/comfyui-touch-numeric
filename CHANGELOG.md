@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.1...comfyui-touch-numeric-v0.1.2) (2026-05-30)
+
+
+### Miscellaneous
+
+* **deps:** Bump googleapis/release-please-action from 4 to 5 ([#1](https://github.com/laurigates/comfyui-touch-numeric/issues/1)) ([8326c69](https://github.com/laurigates/comfyui-touch-numeric/commit/8326c695be101c5ccfe6439563d8f17055f271d3))
+
 ## [0.1.1](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.0...comfyui-touch-numeric-v0.1.1) (2026-05-30)
 
 
