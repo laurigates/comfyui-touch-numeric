@@ -15,6 +15,8 @@ import {
   nextSeedHistory,
   parseSeedInput,
   randomSeed64,
+  randomSeedInRange,
+  seedBounds,
   seedToWidgetValue,
   widgetProfile,
   widgetValueToSeed,
@@ -46,6 +48,98 @@ describe("randomSeed64", () => {
     const b = randomSeed64();
     // Collision probability over 2^64 is negligible.
     expect(a === b).toBe(false);
+  });
+});
+
+describe("randomSeedInRange", () => {
+  it("never exceeds a small widget max across many draws (the bug)", () => {
+    const max = 1000n;
+    for (let i = 0; i < 2000; i++) {
+      const s = randomSeedInRange(0n, max);
+      expect(s >= 0n).toBe(true);
+      expect(s <= max).toBe(true);
+    }
+  });
+
+  it("respects a non-zero min as well as the max", () => {
+    const min = 50n;
+    const max = 60n;
+    for (let i = 0; i < 2000; i++) {
+      const s = randomSeedInRange(min, max);
+      expect(s >= min).toBe(true);
+      expect(s <= max).toBe(true);
+    }
+  });
+
+  it("covers the full inclusive range over enough draws", () => {
+    const seen = new Set();
+    for (let i = 0; i < 1000; i++) seen.add(randomSeedInRange(0n, 3n));
+    expect(seen).toEqual(new Set([0n, 1n, 2n, 3n]));
+  });
+
+  it("can still reach above Number.MAX_SAFE_INTEGER on the full range", () => {
+    const safe = BigInt(Number.MAX_SAFE_INTEGER);
+    let sawLarge = false;
+    for (let i = 0; i < 2000 && !sawLarge; i++) {
+      if (randomSeedInRange(0n, MAX_SEED) > safe) sawLarge = true;
+    }
+    expect(sawLarge).toBe(true);
+  });
+
+  it("collapses a degenerate or inverted range to the low bound", () => {
+    expect(randomSeedInRange(7n, 7n)).toBe(7n);
+    expect(randomSeedInRange(10n, 3n)).toBe(10n);
+  });
+
+  it("clamps bounds into [0, MAX_SEED]", () => {
+    for (let i = 0; i < 200; i++) {
+      const s = randomSeedInRange(-5n, MAX_SEED + 100n);
+      expect(s >= 0n).toBe(true);
+      expect(s <= MAX_SEED).toBe(true);
+    }
+  });
+});
+
+describe("seedBounds", () => {
+  it("reads numeric min/max off widget.options", () => {
+    expect(seedBounds({ options: { min: 0, max: 1000 } })).toEqual({
+      min: 0n,
+      max: 1000n,
+    });
+  });
+
+  it("parses string bounds (serialized graphs)", () => {
+    expect(seedBounds({ options: { min: "5", max: "4294967295" } })).toEqual({
+      min: 5n,
+      max: 4294967295n,
+    });
+  });
+
+  it("defaults to the full unsigned 64-bit range when bounds are absent", () => {
+    expect(seedBounds({})).toEqual({ min: 0n, max: MAX_SEED });
+    expect(seedBounds(null)).toEqual({ min: 0n, max: MAX_SEED });
+    expect(seedBounds({ options: {} })).toEqual({ min: 0n, max: MAX_SEED });
+  });
+
+  it("floors negatives at 0 and caps above MAX_SEED", () => {
+    expect(seedBounds({ options: { min: -10, max: 5 } })).toEqual({
+      min: 0n,
+      max: 5n,
+    });
+  });
+
+  it("ignores unparseable bounds and falls back", () => {
+    expect(seedBounds({ options: { min: "x", max: 3.9 } })).toEqual({
+      min: 0n,
+      max: 3n,
+    });
+  });
+
+  it("collapses inverted bounds to a single value", () => {
+    expect(seedBounds({ options: { min: 100, max: 10 } })).toEqual({
+      min: 100n,
+      max: 100n,
+    });
   });
 });
 

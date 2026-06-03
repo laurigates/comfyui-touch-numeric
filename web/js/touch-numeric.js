@@ -72,6 +72,63 @@ export function randomSeed64() {
 }
 
 /**
+ * Cryptographically-random BigInt uniformly distributed in the inclusive
+ * range [min, max]. Uses crypto.getRandomValues with rejection sampling so
+ * the distribution stays uniform for an arbitrary (possibly non-power-of-two)
+ * range — never Math.random. Falls back to `min` for a degenerate or inverted
+ * range. This is what makes Randomize respect the seed widget's own bounds
+ * instead of always reaching for the full 64-bit ceiling.
+ * @param {bigint} min
+ * @param {bigint} max
+ * @returns {bigint}
+ */
+export function randomSeedInRange(min, max) {
+  let lo = typeof min === "bigint" ? min : 0n;
+  let hi = typeof max === "bigint" ? max : MAX_SEED;
+  if (lo < 0n) lo = 0n;
+  if (hi > MAX_SEED) hi = MAX_SEED;
+  if (hi <= lo) return lo;
+  const span = hi - lo + 1n; // count of valid values in [lo, hi]
+  const bits = span.toString(2).length; // bits needed to cover the span
+  const bytes = Math.ceil(bits / 8);
+  const mask = (1n << BigInt(bits)) - 1n;
+  const buf = new Uint8Array(bytes);
+  // Rejection-sample a uniform value in [0, span); retry on the rare overshoot
+  // past `span` so no value is favoured. Expected iterations < 2.
+  for (;;) {
+    crypto.getRandomValues(buf);
+    let n = 0n;
+    for (const b of buf) n = (n << 8n) | BigInt(b);
+    n &= mask;
+    if (n < span) return lo + n;
+  }
+}
+
+/**
+ * Read a seed widget's inclusive [min, max] bounds as BigInts. ComfyUI INT
+ * widgets carry these on `widget.options`; we fall back to the full unsigned
+ * 64-bit range when a bound is absent or unparseable so Randomize never
+ * under-reaches, and never proposes a value the native widget would reject.
+ * @param {object} widget
+ * @returns {{ min: bigint, max: bigint }}
+ */
+export function seedBounds(widget) {
+  const opts = widget?.options ?? {};
+  const toBig = (v, fallback) => {
+    if (typeof v === "bigint") return v;
+    if (typeof v === "number" && Number.isFinite(v)) return BigInt(Math.trunc(v));
+    if (typeof v === "string" && /^[+-]?\d+$/.test(v.trim())) return BigInt(v.trim());
+    return fallback;
+  };
+  let min = toBig(opts.min, 0n);
+  let max = toBig(opts.max, MAX_SEED);
+  if (min < 0n) min = 0n; // seeds are unsigned; never go below 0
+  if (max > MAX_SEED) max = MAX_SEED;
+  if (max < min) max = min; // inverted bounds collapse to a single value
+  return { min, max };
+}
+
+/**
  * Parse a free-form seed input (keypad digits or a pasted value) into a
  * clamped BigInt, or null when it isn't a usable non-negative integer.
  * Tolerates surrounding whitespace, thousands separators, and a leading "+".
@@ -384,9 +441,18 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   const root = document.createElement("div");
   root.className = "tn-seed";
 
+  // The widget's own inclusive [min, max]. Everything that sets `current`
+  // funnels through clampToBounds so the modal can never propose (or apply) a
+  // value the native seed widget would reject.
+  const { min: seedMin, max: seedMax } = seedBounds(widget);
+  const clampToBounds = (n) => {
+    const c = clampSeed(n);
+    return c < seedMin ? seedMin : c > seedMax ? seedMax : c;
+  };
+
   // Working value as BigInt; falls back to 0 when the widget value is
   // unparseable (never fabricate — 0 is the documented default seed).
-  let current = widgetValueToSeed(widget.value) ?? 0n;
+  let current = clampToBounds(widgetValueToSeed(widget.value) ?? 0n);
   let locked = false;
 
   // --- value field --------------------------------------------------
@@ -404,7 +470,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   valueWrap.append(valueLabel, valueInput);
 
   function setCurrent(n) {
-    current = clampSeed(n);
+    current = clampToBounds(n);
     valueInput.value = current.toString();
   }
 
@@ -415,7 +481,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
       return;
     }
     const parsed = parseSeedInput(valueInput.value);
-    if (parsed !== null) current = parsed;
+    if (parsed !== null) current = clampToBounds(parsed);
   });
 
   // --- keypad -------------------------------------------------------
@@ -452,7 +518,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   randomBtn.textContent = "\u{1F3B2} Randomize";
   randomBtn.addEventListener("click", () => {
     if (locked) return;
-    setCurrent(randomSeed64());
+    setCurrent(randomSeedInRange(seedMin, seedMax));
   });
 
   const lockBtn = document.createElement("button");
