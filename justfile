@@ -32,3 +32,13 @@ test:
 # Lint + test in one shot.
 [group: "quality"]
 check: lint test
+
+##########
+# Documentation artifacts
+##########
+
+# Regenerate docs/seed.png via the containerized screenshot generator.
+[group: "docs"]
+screenshots:
+    docker build -f screenshots/Dockerfile -t comfyui-touch-numeric-screenshots .
+    docker run --rm -v "$(pwd)/docs:/out" comfyui-touch-numeric-screenshots

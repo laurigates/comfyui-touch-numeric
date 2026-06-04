@@ -1,0 +1,9 @@
+{
+  "name": "comfyui-touch-numeric-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Playwright driver for generating README screenshots of comfyui-touch-numeric.",
+  "dependencies": {
+    "playwright": "1.49.1"
+  }
+}

@@ -8,6 +8,12 @@ Touch-friendly keypad, steppers, and slider modal for seed and INT/FLOAT widgets
 > touch-friendly HTML modals that replace clunky native LiteGraph controls,
 > detected by widget name, additive and non-clobbering.
 
+![Seed keypad modal](docs/seed.png)
+
+*The touch keypad modal for `seed` / `noise_seed` widgets: paste or tap an
+18-digit value, one-tap Randomize, Lock, `control_after_generate` as a
+segmented control, and per-session seed history.*
+
 ## Install
 
 ```sh
