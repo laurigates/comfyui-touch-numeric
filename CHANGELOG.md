@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.3...comfyui-touch-numeric-v0.1.4) (2026-06-04)
+
+
+### Documentation
+
+* **screenshots:** add containerized README screenshot pipeline ([#6](https://github.com/laurigates/comfyui-touch-numeric/issues/6)) ([7460efa](https://github.com/laurigates/comfyui-touch-numeric/commit/7460efa26c9cdb2cdbce8ebff973caaf3f43930e))
+
 ## [0.1.3](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.2...comfyui-touch-numeric-v0.1.3) (2026-06-03)
 
 
