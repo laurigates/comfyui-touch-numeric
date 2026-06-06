@@ -20,7 +20,7 @@ import {
   seedToWidgetValue,
   widgetProfile,
   widgetValueToSeed,
-} from "../../web/js/touch-numeric.js";
+} from "../../src/index.ts";
 
 const MAX_SEED = (1n << 64n) - 1n;
 
