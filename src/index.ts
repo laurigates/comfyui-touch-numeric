@@ -1,8 +1,9 @@
 // Touch Numeric — ComfyUI frontend extension.
 //
-// Served at /extensions/comfyui-touch-numeric/js/touch-numeric.js — the pack
-// directory name IS this URL segment. Do not rename the pack dir without
-// syncing EXT_NAME below (used for log prefixes).
+// TypeScript source in `src/`, built to ESM via `bun build` and emitted to
+// `web/dist/` (served at /extensions/comfyui-touch-numeric/index.js — the pack
+// directory name IS the URL segment). Do not rename the pack dir without
+// syncing EXT_NAME below (used for log prefixes). See ADR-0001.
 //
 // Pattern (shared with gallery-loader / sampler-info):
 //   registerExtension -> enhance each node (on create AND on graph load) ->
@@ -23,10 +24,21 @@
 //
 // The v0.2 generic numeric profile (cfg/steps/denoise/... keypad + steppers +
 // bounded slider) slots into the profile dispatch in enhanceNode() — see the
-// `WIDGET_PROFILE` resolver and the TODO marker in openModal().
+// `widgetProfile` resolver and the TODO marker in openModal().
 
-import { app } from "../../../scripts/app.js";
-import { openModalShell } from "./modal-shell.js";
+// The shared modal-shell primitive. Vendored copies (web/js/modal-shell.js,
+// web/js/modal-fuzzy.js) were removed in the TypeScript migration in favour of
+// @laurigates/comfy-modal-kit, which `bun build` INLINES into web/dist (not an
+// external import). See ADR-0001.
+import { openModalShell } from "@laurigates/comfy-modal-kit";
+import { app } from "/scripts/app.js";
+
+// The package's `ComfyApp` type is the only widget/graph type it exports at
+// the module root — `LGraphNode`, `LGraphCanvas`, and the widget interfaces
+// are declared internally but not re-exported, so they cannot be imported. We
+// model the small surface this pack touches with local interfaces instead
+// (narrow blast radius). `ComfyApp` types the imported `app` via the shim in
+// `comfyui-shims.d.ts`.
 
 const EXT_NAME = "comfyui-touch-numeric";
 const STYLE_ID = "tn-style";
@@ -51,10 +63,50 @@ const CONTROL_OPTIONS = ["fixed", "increment", "decrement", "randomize"];
 const MAX_SEED = (1n << 64n) - 1n;
 
 // Per-session seed history, keyed by widget identity. In-memory only (cleared
-// on reload) per the plan's v0.1 decision; localStorage persistence is a
-// later milestone. Map<widget, bigint[]> — newest first.
-const SEED_HISTORY = new Map();
+// on reload). Map<widget, bigint[]> — newest first.
+const SEED_HISTORY = new Map<PatchedWidget, bigint[]>();
 const HISTORY_LIMIT = 24;
+
+// ============================================================
+// Types — the narrow LiteGraph surface this pack reaches into
+// ============================================================
+
+// ComfyUI INT/combo widget options carry the bounds + combo values this pack
+// reads. Only the members touched here are modelled.
+interface WidgetOptions {
+  min?: number | string | bigint;
+  max?: number | string | bigint;
+  values?: unknown[];
+}
+
+// A widget plus the custom props this pack hangs off it. The package's widget
+// types are not exported, so we model the members used here directly.
+// `onPointerDown` and the private guard flag are not part of the public widget
+// surface — they are this pack's intercept seam.
+interface PatchedWidget {
+  name: string;
+  value: unknown;
+  options?: WidgetOptions;
+  inputEl?: { value?: string } | null;
+  callback?: (value: unknown, ...rest: unknown[]) => unknown;
+  onPointerDown?: (
+    pointer: unknown,
+    node: NumericNode,
+    canvas: NumericCanvas,
+  ) => boolean | undefined;
+  _touchNumericPatched?: boolean;
+}
+
+// Minimal structural type for the LiteGraph node this pack operates on. Named
+// `NumericNode` (not `LGraphNode`) to avoid colliding with the package's own
+// un-exported `LGraphNode` at the `registerExtension` lifecycle-hook seam — the
+// hooks receive the package node, which we cast to this structural shape.
+interface NumericNode {
+  widgets?: PatchedWidget[];
+  setDirtyCanvas?: (fg: boolean, bg: boolean) => void;
+}
+
+type NumericCanvas = unknown;
 
 // ============================================================
 // Pure helpers (unit-tested in tests/js/touch-numeric.test.js)
@@ -63,12 +115,11 @@ const HISTORY_LIMIT = 24;
 /**
  * Cryptographically-random 64-bit-safe unsigned integer in [0, MAX_SEED].
  * Uses crypto.getRandomValues (two uint32 words) — never Math.random.
- * @returns {bigint}
  */
-export function randomSeed64() {
+export function randomSeed64(): bigint {
   const buf = new Uint32Array(2);
   crypto.getRandomValues(buf);
-  return (BigInt(buf[0]) << 32n) | BigInt(buf[1]);
+  return (BigInt(buf[0] as number) << 32n) | BigInt(buf[1] as number);
 }
 
 /**
@@ -78,11 +129,8 @@ export function randomSeed64() {
  * range — never Math.random. Falls back to `min` for a degenerate or inverted
  * range. This is what makes Randomize respect the seed widget's own bounds
  * instead of always reaching for the full 64-bit ceiling.
- * @param {bigint} min
- * @param {bigint} max
- * @returns {bigint}
  */
-export function randomSeedInRange(min, max) {
+export function randomSeedInRange(min: bigint, max: bigint): bigint {
   let lo = typeof min === "bigint" ? min : 0n;
   let hi = typeof max === "bigint" ? max : MAX_SEED;
   if (lo < 0n) lo = 0n;
@@ -109,12 +157,13 @@ export function randomSeedInRange(min, max) {
  * widgets carry these on `widget.options`; we fall back to the full unsigned
  * 64-bit range when a bound is absent or unparseable so Randomize never
  * under-reaches, and never proposes a value the native widget would reject.
- * @param {object} widget
- * @returns {{ min: bigint, max: bigint }}
  */
-export function seedBounds(widget) {
+export function seedBounds(widget: { options?: WidgetOptions } | null | undefined): {
+  min: bigint;
+  max: bigint;
+} {
   const opts = widget?.options ?? {};
-  const toBig = (v, fallback) => {
+  const toBig = (v: unknown, fallback: bigint): bigint => {
     if (typeof v === "bigint") return v;
     if (typeof v === "number" && Number.isFinite(v)) return BigInt(Math.trunc(v));
     if (typeof v === "string" && /^[+-]?\d+$/.test(v.trim())) return BigInt(v.trim());
@@ -132,17 +181,15 @@ export function seedBounds(widget) {
  * Parse a free-form seed input (keypad digits or a pasted value) into a
  * clamped BigInt, or null when it isn't a usable non-negative integer.
  * Tolerates surrounding whitespace, thousands separators, and a leading "+".
- * @param {string} raw
- * @returns {bigint | null}
  */
-export function parseSeedInput(raw) {
+export function parseSeedInput(raw: unknown): bigint | null {
   if (typeof raw !== "string") return null;
   const cleaned = raw.trim().replace(/[\s,_]/g, "");
   if (cleaned === "") return null;
   // Non-negative integer only (digits, optional leading +). The native widget
   // is an unsigned INT; reject signs, decimals, hex, exponents.
   if (!/^\+?\d+$/.test(cleaned)) return null;
-  let n;
+  let n: bigint;
   try {
     n = BigInt(cleaned);
   } catch {
@@ -153,10 +200,8 @@ export function parseSeedInput(raw) {
 
 /**
  * Clamp a BigInt seed into [0, MAX_SEED].
- * @param {bigint} n
- * @returns {bigint}
  */
-export function clampSeed(n) {
+export function clampSeed(n: bigint): bigint {
   if (n < 0n) return 0n;
   if (n > MAX_SEED) return MAX_SEED;
   return n;
@@ -167,20 +212,16 @@ export function clampSeed(n) {
  * widgets are Numbers; when the value fits in a safe integer we hand back a
  * Number to match the native contract. Above that we keep a decimal string so
  * the exact 18-digit value survives (never fabricate / round).
- * @param {bigint} n
- * @returns {number | string}
  */
-export function seedToWidgetValue(n) {
+export function seedToWidgetValue(n: bigint): number | string {
   return n <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(n) : n.toString();
 }
 
 /**
  * Read a widget's current value as a BigInt seed, or null when unparseable.
  * Accepts Number or string (serialized graphs may carry either).
- * @param {number | string | bigint | null | undefined} value
- * @returns {bigint | null}
  */
-export function widgetValueToSeed(value) {
+export function widgetValueToSeed(value: unknown): bigint | null {
   if (typeof value === "bigint") return clampSeed(value);
   if (typeof value === "number" && Number.isFinite(value)) {
     return clampSeed(BigInt(Math.trunc(value)));
@@ -192,12 +233,12 @@ export function widgetValueToSeed(value) {
 /**
  * Push a seed onto a history ring (newest first), de-duplicating an
  * immediate repeat and capping length. Pure — returns a NEW array.
- * @param {bigint[]} history
- * @param {bigint} seed
- * @param {number} [limit=HISTORY_LIMIT]
- * @returns {bigint[]}
  */
-export function nextSeedHistory(history, seed, limit = HISTORY_LIMIT) {
+export function nextSeedHistory(
+  history: bigint[],
+  seed: bigint,
+  limit: number = HISTORY_LIMIT,
+): bigint[] {
   const prev = Array.isArray(history) ? history : [];
   if (prev.length > 0 && prev[0] === seed) return prev.slice(0, limit);
   return [seed, ...prev.filter((s) => s !== seed)].slice(0, limit);
@@ -206,11 +247,11 @@ export function nextSeedHistory(history, seed, limit = HISTORY_LIMIT) {
 /**
  * Find an adjacent widget by name on the same node (e.g. the
  * control_after_generate combo next to a seed). Returns null when absent.
- * @param {object} node
- * @param {string} name
- * @returns {object | null}
  */
-export function findAdjacentWidget(node, name) {
+export function findAdjacentWidget(
+  node: NumericNode | null | undefined,
+  name: string,
+): PatchedWidget | null {
   if (!node?.widgets) return null;
   for (const w of node.widgets) {
     if (w?.name === name) return w;
@@ -222,10 +263,8 @@ export function findAdjacentWidget(node, name) {
  * Resolve which modal profile a widget gets. v0.1 only knows "seed". The
  * generic numeric profile lands here in v0.2 (keyed on name set / widget
  * type), which is why dispatch is centralised rather than inlined.
- * @param {object} w
- * @returns {"seed" | null}
  */
-export function widgetProfile(w) {
+export function widgetProfile(w: PatchedWidget | null | undefined): "seed" | null {
   if (w && SEED_WIDGET_NAMES.has(w.name)) return "seed";
   return null;
 }
@@ -400,7 +439,7 @@ const CSS = `
 }
 `;
 
-function ensureStyle() {
+function ensureStyle(): void {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement("style");
   s.id = STYLE_ID;
@@ -417,7 +456,11 @@ function ensureStyle() {
  * native commit path (so downstream listeners + canvas redraw behave). Never
  * mutates the graph except through this explicit user action.
  */
-function commitWidgetValue(widget, node, value) {
+function commitWidgetValue(
+  widget: PatchedWidget,
+  node: NumericNode | null,
+  value: number | string,
+): void {
   widget.value = value;
   // STRING-rendered widgets keep a DOM copy; sync it so the user sees the
   // new value before the canvas redraws.
@@ -437,7 +480,20 @@ function commitWidgetValue(widget, node, value) {
 // Seed modal
 // ============================================================
 
-function buildSeedBody(widget, node, controlWidget, modal) {
+// The subset of the modal-shell controller this pack uses. `openModalShell`
+// returns the full `ModalShellController`; the body builder only needs the
+// body element and a programmatic close.
+interface SeedModal {
+  bodyEl: HTMLElement;
+  close: () => void;
+}
+
+function buildSeedBody(
+  widget: PatchedWidget,
+  node: NumericNode | null,
+  controlWidget: PatchedWidget | null,
+  modal: SeedModal,
+): HTMLDivElement {
   const root = document.createElement("div");
   root.className = "tn-seed";
 
@@ -445,7 +501,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   // funnels through clampToBounds so the modal can never propose (or apply) a
   // value the native seed widget would reject.
   const { min: seedMin, max: seedMax } = seedBounds(widget);
-  const clampToBounds = (n) => {
+  const clampToBounds = (n: bigint): bigint => {
     const c = clampSeed(n);
     return c < seedMin ? seedMin : c > seedMax ? seedMax : c;
   };
@@ -469,7 +525,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   valueInput.value = current.toString();
   valueWrap.append(valueLabel, valueInput);
 
-  function setCurrent(n) {
+  function setCurrent(n: bigint): void {
     current = clampToBounds(n);
     valueInput.value = current.toString();
   }
@@ -524,7 +580,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   const lockBtn = document.createElement("button");
   lockBtn.type = "button";
   lockBtn.className = "tn-btn";
-  function renderLock() {
+  function renderLock(): void {
     lockBtn.textContent = locked ? "\u{1F512} Locked" : "\u{1F513} Lock";
     lockBtn.classList.toggle("tn-on", locked);
     valueInput.disabled = locked;
@@ -537,7 +593,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   actionRow.append(randomBtn, lockBtn);
 
   // --- control_after_generate segmented control ---------------------
-  let controlWrap = null;
+  let controlWrap: HTMLDivElement | null = null;
   if (controlWidget && Array.isArray(controlWidget.options?.values)) {
     // Use the node's own option order when present; else the core default.
     const optionValues = controlWidget.options.values.length
@@ -549,8 +605,8 @@ function buildSeedBody(widget, node, controlWidget, modal) {
     controlLabel.textContent = "After generate";
     const seg = document.createElement("div");
     seg.className = "tn-seg";
-    const segButtons = [];
-    const renderSeg = () => {
+    const segButtons: HTMLButtonElement[] = [];
+    const renderSeg = (): void => {
       const active = String(controlWidget.value);
       for (const b of segButtons) {
         b.classList.toggle("tn-seg-active", b.dataset.value === active);
@@ -564,7 +620,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
       // Title-case the canonical lowercase option for display.
       b.textContent = String(opt).charAt(0).toUpperCase() + String(opt).slice(1);
       b.addEventListener("click", () => {
-        commitWidgetValue(controlWidget, node, opt);
+        commitWidgetValue(controlWidget, node, String(opt));
         renderSeg();
       });
       seg.appendChild(b);
@@ -583,7 +639,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   historyList.className = "tn-history";
   historyWrap.append(historyLabel, historyList);
 
-  function renderHistory() {
+  function renderHistory(): void {
     const hist = SEED_HISTORY.get(widget) ?? [];
     historyList.replaceChildren();
     if (hist.length === 0) {
@@ -642,7 +698,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   return root;
 }
 
-function openSeedModal(widget, node) {
+function openSeedModal(widget: PatchedWidget, node: NumericNode | null): void {
   ensureStyle();
   const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
   const modal = openModalShell({
@@ -659,7 +715,7 @@ function openSeedModal(widget, node) {
 // Modal dispatch (profile -> opener)
 // ============================================================
 
-function openModal(widget, node) {
+function openModal(widget: PatchedWidget, node: NumericNode | null): boolean {
   const profile = widgetProfile(widget);
   if (profile === "seed") {
     openSeedModal(widget, node);
@@ -673,7 +729,7 @@ function openModal(widget, node) {
 // Wiring
 // ============================================================
 
-function enhanceNode(node) {
+function enhanceNode(node: NumericNode): void {
   for (const w of node?.widgets ?? []) {
     if (widgetProfile(w) === null) continue;
     if (w._touchNumericPatched) continue; // guard against double-patching
@@ -683,7 +739,12 @@ function enhanceNode(node) {
     // our modal if the original didn't consume the event. Fall back to the
     // native control on dismiss/error (additive — never break the widget).
     const origDown = w.onPointerDown;
-    w.onPointerDown = function (pointer, ownerNode, canvas) {
+    w.onPointerDown = function (
+      this: PatchedWidget,
+      pointer: unknown,
+      ownerNode: NumericNode,
+      canvas: NumericCanvas,
+    ): boolean | undefined {
       try {
         if (typeof origDown === "function") {
           const consumed = origDown.call(this, pointer, ownerNode, canvas);
@@ -701,17 +762,19 @@ function enhanceNode(node) {
 
 app.registerExtension({
   name: "comfy.touch-numeric",
-  // Handle freshly created nodes AND nodes restored from a saved graph.
+  // Handle freshly created nodes AND nodes restored from a saved graph. The
+  // lifecycle-hook node params are the package's own `LGraphNode`; cast each to
+  // the structural `NumericNode` this pack operates on.
   async nodeCreated(node) {
     try {
-      enhanceNode(node);
+      enhanceNode(node as unknown as NumericNode);
     } catch (e) {
       console.warn(`[${EXT_NAME}] nodeCreated enhance failed`, e);
     }
   },
   async loadedGraphNode(node) {
     try {
-      enhanceNode(node);
+      enhanceNode(node as unknown as NumericNode);
     } catch (e) {
       console.warn(`[${EXT_NAME}] loadedGraphNode enhance failed`, e);
     }

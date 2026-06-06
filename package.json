@@ -1,13 +1,24 @@
 {
-  "name": "comfyui-touch-numeric-dev",
+  "name": "comfyui-touch-numeric",
   "private": true,
   "type": "module",
-  "description": "Dev-only test harness for comfyui-touch-numeric. Nothing here ships to users.",
+  "description": "Touch-friendly keypad/stepper/slider modal for ComfyUI seed and INT/FLOAT widgets. TypeScript source in src/, built to web/dist/ via bun build (the @laurigates/comfy-modal-kit primitives are inlined). See ADR-0001.",
   "scripts": {
+    "build": "bun build ./src/index.ts --target browser --format esm --outdir web/dist --external '/scripts/*'",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "biome check",
+    "knip": "knip"
+  },
+  "dependencies": {
+    "@laurigates/comfy-modal-kit": "^0.2.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.7"
+    "typescript": "^5.7.0",
+    "@comfyorg/comfyui-frontend-types": "^1.43.0",
+    "@biomejs/biome": "^2.4.15",
+    "vitest": "^4.1.7",
+    "knip": "^5.0.0"
   }
 }
