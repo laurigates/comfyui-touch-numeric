@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.4...comfyui-touch-numeric-v0.1.5) (2026-06-06)
+
+
+### Features
+
+* **build:** migrate to TypeScript + bun build ([#10](https://github.com/laurigates/comfyui-touch-numeric/issues/10)) ([eee978f](https://github.com/laurigates/comfyui-touch-numeric/commit/eee978f383fbad052439e25f3aa09704c027f344))
+
+
+### Miscellaneous
+
+* **deps:** Bump gitleaks/gitleaks-action from 2 to 3 ([#8](https://github.com/laurigates/comfyui-touch-numeric/issues/8)) ([cdf4d76](https://github.com/laurigates/comfyui-touch-numeric/commit/cdf4d76a23a5633c28d2ea2fa99c04523b175f68))
+
 ## [0.1.4](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.3...comfyui-touch-numeric-v0.1.4) (2026-06-04)
 
 
