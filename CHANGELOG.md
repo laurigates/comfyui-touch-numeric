@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.5...comfyui-touch-numeric-v0.1.6) (2026-06-07)
+
+
+### Bug Fixes
+
+* **ci:** set skip_checkout so the built web/dist reaches the registry ([#12](https://github.com/laurigates/comfyui-touch-numeric/issues/12)) ([13c5d13](https://github.com/laurigates/comfyui-touch-numeric/commit/13c5d13caa6714c978896e6180b8a46e35774d42))
+
 ## [0.1.5](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.4...comfyui-touch-numeric-v0.1.5) (2026-06-06)
 
 
