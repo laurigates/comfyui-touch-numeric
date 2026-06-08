@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.7...comfyui-touch-numeric-v0.1.8) (2026-06-08)
+
+
+### Bug Fixes
+
+* ship web/dist in registry tarball (pin publish-node-action skip_checkout) ([#19](https://github.com/laurigates/comfyui-touch-numeric/issues/19)) ([ec92328](https://github.com/laurigates/comfyui-touch-numeric/commit/ec92328a96151053fbe66670587e84c589a00b75))
+
 ## [0.1.7](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.6...comfyui-touch-numeric-v0.1.7) (2026-06-08)
 
 
