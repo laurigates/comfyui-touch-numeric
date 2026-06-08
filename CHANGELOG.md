@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.6...comfyui-touch-numeric-v0.1.7) (2026-06-08)
+
+
+### Bug Fixes
+
+* add Comfy Registry icon/banner and publish on release event ([#16](https://github.com/laurigates/comfyui-touch-numeric/issues/16)) ([dfc5f09](https://github.com/laurigates/comfyui-touch-numeric/commit/dfc5f0913ef8e330ad0dca4896483fa63bfc0e26))
+
 ## [0.1.6](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.5...comfyui-touch-numeric-v0.1.6) (2026-06-07)
 
 
