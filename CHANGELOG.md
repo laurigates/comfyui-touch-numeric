@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.8...comfyui-touch-numeric-v0.1.9) (2026-06-09)
+
+
+### Bug Fixes
+
+* **registry:** ship runtime-only files in the Comfy Registry tarball ([#22](https://github.com/laurigates/comfyui-touch-numeric/issues/22)) ([c496a64](https://github.com/laurigates/comfyui-touch-numeric/commit/c496a64cd8f92b9b3600c7c5f83e13d33940a138))
+
 ## [0.1.8](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.7...comfyui-touch-numeric-v0.1.8) (2026-06-08)
 
 
