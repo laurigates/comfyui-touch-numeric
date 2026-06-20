@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.10](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.9...comfyui-touch-numeric-v0.1.10) (2026-06-20)
+
+
+### Bug Fixes
+
+* pin comfyui-frontend-package to 3-part version (&gt;=1.40.0) ([#28](https://github.com/laurigates/comfyui-touch-numeric/issues/28)) ([3cbb514](https://github.com/laurigates/comfyui-touch-numeric/commit/3cbb514a4f0183250d42c4b8297963caf9e086c6))
+
+
+### Miscellaneous
+
+* **deps:** remove Dependabot config, consolidate on Renovate ([#26](https://github.com/laurigates/comfyui-touch-numeric/issues/26)) ([09e5c1d](https://github.com/laurigates/comfyui-touch-numeric/commit/09e5c1d4aaf5c567d5fc540c79f30f300328ba52))
+
 ## [0.1.9](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.8...comfyui-touch-numeric-v0.1.9) (2026-06-09)
 
 
