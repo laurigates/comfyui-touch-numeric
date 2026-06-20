@@ -14,7 +14,7 @@ jobs:
     name: Lint & format (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -32,7 +32,7 @@ jobs:
     name: Lint & format (JavaScript)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
@@ -49,7 +49,7 @@ jobs:
     name: Typecheck & build (TypeScript)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -67,7 +67,7 @@ jobs:
     name: Tests (Python)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -82,7 +82,7 @@ jobs:
     name: Tests (JavaScript)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -97,7 +97,7 @@ jobs:
     name: Security scanning
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # gitleaks scans <prev>^..<head>; the parent commit must be
           # present locally, so a shallow clone fails with
