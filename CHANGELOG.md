@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.10...comfyui-touch-numeric-v0.1.11) (2026-06-26)
+
+
+### Bug Fixes
+
+* **dist:** commit web/dist so git-based updates carry the built frontend ([#34](https://github.com/laurigates/comfyui-touch-numeric/issues/34)) ([584de19](https://github.com/laurigates/comfyui-touch-numeric/commit/584de19006080379b5808212c9f37e4e758b037f))
+
 ## [0.1.10](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.9...comfyui-touch-numeric-v0.1.10) (2026-06-20)
 
 
