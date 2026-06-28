@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-touch-numeric"
 description = "Touch-friendly keypad, steppers, and slider modal for seed and INT/FLOAT widgets — seed history, lock, and control_after_generate folded in."
-version = "0.1.11"
+version = "0.1.12"
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.10"

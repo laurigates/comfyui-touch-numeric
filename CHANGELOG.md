@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.11...comfyui-touch-numeric-v0.1.12) (2026-06-28)
+
+
+### Miscellaneous
+
+* sync uv.lock and auto-bump it via release-please ([#37](https://github.com/laurigates/comfyui-touch-numeric/issues/37)) ([e85e0b6](https://github.com/laurigates/comfyui-touch-numeric/commit/e85e0b61aa7398c45eda5f1eb9ae680a64ef0b9e))
+
 ## [0.1.11](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.10...comfyui-touch-numeric-v0.1.11) (2026-06-26)
 
 
