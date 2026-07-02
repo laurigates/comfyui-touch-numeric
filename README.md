@@ -2,11 +2,20 @@
 
 Touch-friendly keypad, steppers, and slider modal for seed and INT/FLOAT widgets — seed history, lock, and control_after_generate folded in.
 
-> Part of a family of mobile-first ComfyUI usability packs
-> ([gallery-loader](https://github.com/laurigates/comfyui-gallery-loader),
-> [sampler-info](https://github.com/laurigates/comfyui-sampler-info)):
-> touch-friendly HTML modals that replace clunky native LiteGraph controls,
-> detected by widget name, additive and non-clobbering.
+> Part of a family of mobile-first ComfyUI usability packs — touch-friendly HTML
+> modals that replace clunky native LiteGraph controls, detected by widget name,
+> additive and non-clobbering. They share the
+> [`@laurigates/comfy-modal-kit`](https://github.com/laurigates/comfy-modal-kit)
+> modal primitives and its cross-pack field-provider registry, so this keypad
+> also renders **inline** inside the
+> [prompt-editor](https://github.com/laurigates/comfyui-prompt-editor). Siblings:
+> [gallery-loader](https://github.com/laurigates/comfyui-gallery-loader),
+> [model-gallery](https://github.com/laurigates/comfyui-model-gallery),
+> [prompt-editor](https://github.com/laurigates/comfyui-prompt-editor),
+> [sampler-info](https://github.com/laurigates/comfyui-sampler-info),
+> [touch-connect](https://github.com/laurigates/comfyui-touch-connect),
+> [touch-resize](https://github.com/laurigates/comfyui-touch-resize),
+> [touch-tooltips](https://github.com/laurigates/comfyui-touch-tooltips).
 
 ![Seed keypad modal](docs/seed.png)
 

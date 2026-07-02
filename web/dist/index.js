@@ -1,7 +1,87 @@
 // node_modules/@laurigates/comfy-modal-kit/dist/index.js
-var STYLE_ID = "cmp-shell-style";
-var ACTIVE = null;
-var CSS = `
+var KEY = Symbol.for("laurigates.comfyModalKit");
+function getKit() {
+  const g = globalThis;
+  let kit = g[KEY];
+  if (!kit) {
+    kit = { fieldProviders: [], activeModal: null, pointerClaim: null };
+    g[KEY] = kit;
+  }
+  return kit;
+}
+function registerFieldProvider(provider) {
+  const list = getKit().fieldProviders;
+  const i = list.findIndex((p) => p.id === provider.id);
+  if (i >= 0) {
+    list.splice(i, 1, provider);
+  } else {
+    list.push(provider);
+  }
+}
+var guardInstalled = false;
+function setActiveModal(handle) {
+  installPointerGuard();
+  dismissActiveModal();
+  getKit().activeModal = handle;
+}
+function dismissActiveModal() {
+  const kit = getKit();
+  const active = kit.activeModal;
+  if (!active)
+    return;
+  kit.activeModal = null;
+  try {
+    active.close();
+  } catch (e) {
+    console.warn("[comfy-modal-kit] active modal close() threw", e);
+  }
+}
+function getActiveModal() {
+  return getKit().activeModal;
+}
+function patchWidgetPointer(widget, opener) {
+  const original = widget.onPointerDown;
+  function patched(pointer, node, canvas) {
+    try {
+      if (typeof original === "function") {
+        const consumed = original.call(this, pointer, node, canvas);
+        if (consumed)
+          return consumed;
+      }
+      return opener(pointer, node, canvas);
+    } catch (e) {
+      console.warn("[comfy-modal-kit] patched onPointerDown threw", e);
+      return false;
+    }
+  }
+  widget.onPointerDown = patched;
+  return {
+    restore() {
+      widget.onPointerDown = original;
+    }
+  };
+}
+function installPointerGuard() {
+  if (guardInstalled)
+    return;
+  if (typeof window === "undefined")
+    return;
+  guardInstalled = true;
+  window.addEventListener("pointerdown", pointerGuard, true);
+}
+function pointerGuard(e) {
+  const active = getKit().activeModal;
+  if (!active)
+    return;
+  const target = e.target;
+  if (active.element && target && active.element.contains(target)) {
+    return;
+  }
+  e.stopImmediatePropagation();
+  dismissActiveModal();
+}
+var STYLE_ID2 = "cmp-shell-style";
+var CSS2 = `
 .cmp-backdrop {
     position: fixed;
     inset: 0;
@@ -150,37 +230,18 @@ var CSS = `
     color: #b8b8c0;
 }
 `;
-function ensureStyle() {
-  if (document.getElementById(STYLE_ID))
+function ensureStyle2() {
+  if (document.getElementById(STYLE_ID2))
     return;
   const s = document.createElement("style");
-  s.id = STYLE_ID;
-  s.textContent = CSS;
+  s.id = STYLE_ID2;
+  s.textContent = CSS2;
   document.head.appendChild(s);
 }
-function dismissActive() {
-  if (!ACTIVE)
-    return;
-  const a = ACTIVE;
-  ACTIVE = null;
-  try {
-    a.backdrop.remove();
-    a.dialog.remove();
-    document.removeEventListener("keydown", a._onKey, true);
-  } finally {
-    try {
-      a.opts.onClose?.();
-    } catch (e) {
-      console.warn("[modal-shell] onClose threw", e);
-    }
-  }
-}
 function openModalShell(opts = {}) {
-  ensureStyle();
-  dismissActive();
+  ensureStyle2();
   const backdrop = document.createElement("div");
   backdrop.className = "cmp-backdrop";
-  backdrop.addEventListener("pointerdown", dismissActive);
   const dialog = document.createElement("div");
   dialog.className = "cmp-dialog";
   if (opts.width)
@@ -207,7 +268,6 @@ function openModalShell(opts = {}) {
   closeBtn.type = "button";
   closeBtn.textContent = "×";
   closeBtn.title = "Close (Esc)";
-  closeBtn.addEventListener("click", dismissActive);
   headerEl.append(titleEl, closeBtn);
   const toolbarEl = document.createElement("div");
   toolbarEl.className = "cmp-toolbar";
@@ -240,11 +300,38 @@ function openModalShell(opts = {}) {
     footerEl.style.display = "none";
   }
   dialog.append(headerEl, toolbarEl, searchRow, bodyEl, footerEl);
+  let torn = false;
+  const teardown = () => {
+    if (torn)
+      return;
+    torn = true;
+    try {
+      backdrop.remove();
+      dialog.remove();
+      document.removeEventListener("keydown", onKey, true);
+    } finally {
+      try {
+        opts.onClose?.();
+      } catch (e) {
+        console.warn("[modal-shell] onClose threw", e);
+      }
+    }
+  };
+  const handle = { id: "modal-shell", element: dialog, close: teardown };
+  const requestClose = () => {
+    if (getActiveModal() === handle) {
+      dismissActiveModal();
+    } else {
+      teardown();
+    }
+  };
+  backdrop.addEventListener("pointerdown", requestClose);
+  closeBtn.addEventListener("click", requestClose);
   const onKey = (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
-      dismissActive();
+      requestClose();
       return;
     }
     try {
@@ -270,14 +357,14 @@ function openModalShell(opts = {}) {
     setStatus(s) {
       statusEl.textContent = s || "";
     },
-    close: dismissActive,
+    close: requestClose,
     _onKey: onKey,
     opts
   };
-  ACTIVE = controller;
+  setActiveModal(handle);
   if (opts.showSearch !== false) {
     requestAnimationFrame(() => {
-      if (ACTIVE === controller)
+      if (getActiveModal() === handle)
         searchEl.focus();
     });
   }
@@ -287,7 +374,7 @@ function openModalShell(opts = {}) {
 // src/index.ts
 import { app } from "/scripts/app.js";
 var EXT_NAME = "comfyui-touch-numeric";
-var STYLE_ID2 = "tn-style";
+var STYLE_ID = "tn-style";
 var SEED_WIDGET_NAMES = new Set(["seed", "noise_seed"]);
 var CONTROL_WIDGET_NAME = "control_after_generate";
 var CONTROL_OPTIONS = ["fixed", "increment", "decrement", "randomize"];
@@ -400,7 +487,7 @@ function widgetProfile(w) {
     return "seed";
   return null;
 }
-var CSS2 = `
+var CSS = `
 .tn-seed {
     display: flex;
     flex-direction: column;
@@ -565,12 +652,12 @@ var CSS2 = `
     padding: 8px 2px;
 }
 `;
-function ensureStyle2() {
-  if (document.getElementById(STYLE_ID2))
+function ensureStyle() {
+  if (document.getElementById(STYLE_ID))
     return;
   const s = document.createElement("style");
-  s.id = STYLE_ID2;
-  s.textContent = CSS2;
+  s.id = STYLE_ID;
+  s.textContent = CSS;
   document.head.appendChild(s);
 }
 function commitWidgetValue(widget, node, value) {
@@ -586,7 +673,9 @@ function commitWidgetValue(widget, node, value) {
   node?.setDirtyCanvas?.(true, true);
   app.graph?.setDirtyCanvas?.(true, true);
 }
-function buildSeedBody(widget, node, controlWidget, modal) {
+function buildSeedControl(widget, node, controlWidget) {
+  const ac = new AbortController;
+  const { signal } = ac;
   const root = document.createElement("div");
   root.className = "tn-seed";
   const { min: seedMin, max: seedMax } = seedBounds(widget);
@@ -620,7 +709,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
     const parsed = parseSeedInput(valueInput.value);
     if (parsed !== null)
       current = clampToBounds(parsed);
-  });
+  }, { signal });
   const keypad = document.createElement("div");
   keypad.className = "tn-keypad";
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "del"];
@@ -642,7 +731,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
       } else {
         setCurrent(BigInt(current.toString() + k));
       }
-    });
+    }, { signal });
     keypad.appendChild(btn);
   }
   const actionRow = document.createElement("div");
@@ -655,7 +744,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
     if (locked)
       return;
     setCurrent(randomSeedInRange(seedMin, seedMax));
-  });
+  }, { signal });
   const lockBtn = document.createElement("button");
   lockBtn.type = "button";
   lockBtn.className = "tn-btn";
@@ -667,7 +756,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   lockBtn.addEventListener("click", () => {
     locked = !locked;
     renderLock();
-  });
+  }, { signal });
   renderLock();
   actionRow.append(randomBtn, lockBtn);
   let controlWrap = null;
@@ -695,7 +784,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
       b.addEventListener("click", () => {
         commitWidgetValue(controlWidget, node, String(opt));
         renderSeg();
-      });
+      }, { signal });
       seg.appendChild(b);
       segButtons.push(b);
     }
@@ -733,11 +822,29 @@ function buildSeedBody(widget, node, controlWidget, modal) {
         if (locked)
           return;
         setCurrent(seed);
-      });
+      }, { signal });
       historyList.appendChild(item);
     }
   }
   renderHistory();
+  root.append(valueWrap, keypad, actionRow);
+  if (controlWrap)
+    root.append(controlWrap);
+  root.append(historyWrap);
+  return {
+    el: root,
+    getSeed: () => current,
+    getValue: () => seedToWidgetValue(current),
+    focus: () => valueInput.focus(),
+    recordHistory: () => {
+      SEED_HISTORY.set(widget, nextSeedHistory(SEED_HISTORY.get(widget) ?? [], current));
+      renderHistory();
+    },
+    destroy: () => ac.abort()
+  };
+}
+function buildSeedBody(widget, node, controlWidget, modal) {
+  const control = buildSeedControl(widget, node, controlWidget);
   const commitRow = document.createElement("div");
   commitRow.className = "tn-row";
   const applyBtn = document.createElement("button");
@@ -745,10 +852,8 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   applyBtn.className = "tn-btn tn-btn-primary";
   applyBtn.textContent = "Apply seed";
   applyBtn.addEventListener("click", () => {
-    const value = seedToWidgetValue(current);
-    commitWidgetValue(widget, node, value);
-    SEED_HISTORY.set(widget, nextSeedHistory(SEED_HISTORY.get(widget) ?? [], current));
-    renderHistory();
+    commitWidgetValue(widget, node, control.getValue());
+    control.recordHistory();
     modal.close();
   });
   const cancelBtn = document.createElement("button");
@@ -757,14 +862,11 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => modal.close());
   commitRow.append(applyBtn, cancelBtn);
-  root.append(valueWrap, keypad, actionRow);
-  if (controlWrap)
-    root.append(controlWrap);
-  root.append(historyWrap, commitRow);
-  return root;
+  control.el.append(commitRow);
+  return control.el;
 }
 function openSeedModal(widget, node) {
-  ensureStyle2();
+  ensureStyle();
   const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
   const modal = openModalShell({
     title: "Seed",
@@ -775,6 +877,26 @@ function openSeedModal(widget, node) {
   });
   modal.bodyEl.appendChild(buildSeedBody(widget, node, controlWidget, modal));
 }
+registerFieldProvider({
+  id: "touch-numeric:seed",
+  priority: 10,
+  match: (widget) => widgetProfile(widget) === "seed",
+  create: (ctx) => {
+    ensureStyle();
+    const widget = ctx.widget;
+    const node = ctx.node ?? null;
+    const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
+    const control = buildSeedControl(widget, node, controlWidget);
+    const initialSeed = widgetValueToSeed(ctx.initialValue);
+    return {
+      el: control.el,
+      getValue: () => control.getValue(),
+      hasChanged: () => control.getSeed() !== initialSeed,
+      focus: () => control.focus(),
+      destroy: () => control.destroy()
+    };
+  }
+});
 function openModal(widget, node) {
   const profile = widgetProfile(widget);
   if (profile === "seed") {
@@ -790,20 +912,7 @@ function enhanceNode(node) {
     if (w._touchNumericPatched)
       continue;
     w._touchNumericPatched = true;
-    const origDown = w.onPointerDown;
-    w.onPointerDown = function(pointer, ownerNode, canvas) {
-      try {
-        if (typeof origDown === "function") {
-          const consumed = origDown.call(this, pointer, ownerNode, canvas);
-          if (consumed)
-            return consumed;
-        }
-        return openModal(w, ownerNode || node);
-      } catch (e) {
-        console.warn(`[${EXT_NAME}] modal open failed`, e);
-        return false;
-      }
-    };
+    patchWidgetPointer(w, (_pointer, ownerNode) => openModal(w, ownerNode || node));
   }
 }
 app.registerExtension({

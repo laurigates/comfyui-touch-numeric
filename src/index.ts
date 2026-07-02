@@ -30,7 +30,14 @@
 // web/js/modal-fuzzy.js) were removed in the TypeScript migration in favour of
 // @laurigates/comfy-modal-kit, which `bun build` INLINES into web/dist (not an
 // external import). See ADR-0001.
-import { openModalShell } from "@laurigates/comfy-modal-kit";
+import {
+  type FieldControl,
+  type FieldControlContext,
+  openModalShell,
+  type PointerPatchableWidget,
+  patchWidgetPointer,
+  registerFieldProvider,
+} from "@laurigates/comfy-modal-kit";
 import { app } from "/scripts/app.js";
 
 // The package's `ComfyApp` type is the only widget/graph type it exports at
@@ -488,17 +495,44 @@ interface SeedModal {
   close: () => void;
 }
 
-function buildSeedBody(
+// A live inline seed control: the DOM element plus the accessors a caller
+// needs to read/commit the working value WITHOUT the control committing
+// itself. The on-canvas modal wraps this with a self-committing Apply button;
+// the field provider hands it to a host editor that drives the writeback.
+interface SeedControl {
+  el: HTMLDivElement;
+  /** Current working seed as an exact BigInt (bounds-clamped). */
+  getSeed: () => bigint;
+  /** Current working value in the widget's native type (Number or string). */
+  getValue: () => number | string;
+  /** Focus the value input. */
+  focus: () => void;
+  /** Record the current seed in this widget's session history + rerender. */
+  recordHistory: () => void;
+  /** Tear down every listener this control attached. */
+  destroy: () => void;
+}
+
+// The reusable inline DOM builder, SPLIT from the self-committing modal
+// wrapper. Builds the value field, keypad, randomize/lock, the adjacent
+// `control_after_generate` segmented control, and the session history list —
+// but attaches NO Apply/commit affordance and never writes back to the seed
+// widget. Callers (the modal wrapper below, or the field provider) own commit.
+// All listeners hang off one AbortController so `destroy()` removes them at
+// once when a host editor discards the row.
+function buildSeedControl(
   widget: PatchedWidget,
   node: NumericNode | null,
   controlWidget: PatchedWidget | null,
-  modal: SeedModal,
-): HTMLDivElement {
+): SeedControl {
+  const ac = new AbortController();
+  const { signal } = ac;
+
   const root = document.createElement("div");
   root.className = "tn-seed";
 
   // The widget's own inclusive [min, max]. Everything that sets `current`
-  // funnels through clampToBounds so the modal can never propose (or apply) a
+  // funnels through clampToBounds so the control can never propose (or apply) a
   // value the native seed widget would reject.
   const { min: seedMin, max: seedMax } = seedBounds(widget);
   const clampToBounds = (n: bigint): bigint => {
@@ -531,14 +565,18 @@ function buildSeedBody(
   }
 
   // Re-parse on manual edit / paste so the keypad and field stay in sync.
-  valueInput.addEventListener("input", () => {
-    if (locked) {
-      valueInput.value = current.toString();
-      return;
-    }
-    const parsed = parseSeedInput(valueInput.value);
-    if (parsed !== null) current = clampToBounds(parsed);
-  });
+  valueInput.addEventListener(
+    "input",
+    () => {
+      if (locked) {
+        valueInput.value = current.toString();
+        return;
+      }
+      const parsed = parseSeedInput(valueInput.value);
+      if (parsed !== null) current = clampToBounds(parsed);
+    },
+    { signal },
+  );
 
   // --- keypad -------------------------------------------------------
   const keypad = document.createElement("div");
@@ -550,18 +588,22 @@ function buildSeedBody(
     btn.className = "tn-key";
     if (k === "clear" || k === "del") btn.classList.add("tn-key-wide");
     btn.textContent = k === "clear" ? "C" : k === "del" ? "⌫" : k;
-    btn.addEventListener("click", () => {
-      if (locked) return;
-      if (k === "clear") {
-        setCurrent(0n);
-      } else if (k === "del") {
-        const s = current.toString();
-        setCurrent(s.length > 1 ? BigInt(s.slice(0, -1)) : 0n);
-      } else {
-        // Append digit; clamp swallows overflow past the 64-bit ceiling.
-        setCurrent(BigInt(current.toString() + k));
-      }
-    });
+    btn.addEventListener(
+      "click",
+      () => {
+        if (locked) return;
+        if (k === "clear") {
+          setCurrent(0n);
+        } else if (k === "del") {
+          const s = current.toString();
+          setCurrent(s.length > 1 ? BigInt(s.slice(0, -1)) : 0n);
+        } else {
+          // Append digit; clamp swallows overflow past the 64-bit ceiling.
+          setCurrent(BigInt(current.toString() + k));
+        }
+      },
+      { signal },
+    );
     keypad.appendChild(btn);
   }
 
@@ -572,10 +614,14 @@ function buildSeedBody(
   randomBtn.type = "button";
   randomBtn.className = "tn-btn tn-btn-primary";
   randomBtn.textContent = "\u{1F3B2} Randomize";
-  randomBtn.addEventListener("click", () => {
-    if (locked) return;
-    setCurrent(randomSeedInRange(seedMin, seedMax));
-  });
+  randomBtn.addEventListener(
+    "click",
+    () => {
+      if (locked) return;
+      setCurrent(randomSeedInRange(seedMin, seedMax));
+    },
+    { signal },
+  );
 
   const lockBtn = document.createElement("button");
   lockBtn.type = "button";
@@ -585,10 +631,14 @@ function buildSeedBody(
     lockBtn.classList.toggle("tn-on", locked);
     valueInput.disabled = locked;
   }
-  lockBtn.addEventListener("click", () => {
-    locked = !locked;
-    renderLock();
-  });
+  lockBtn.addEventListener(
+    "click",
+    () => {
+      locked = !locked;
+      renderLock();
+    },
+    { signal },
+  );
   renderLock();
   actionRow.append(randomBtn, lockBtn);
 
@@ -619,10 +669,14 @@ function buildSeedBody(
       b.dataset.value = String(opt);
       // Title-case the canonical lowercase option for display.
       b.textContent = String(opt).charAt(0).toUpperCase() + String(opt).slice(1);
-      b.addEventListener("click", () => {
-        commitWidgetValue(controlWidget, node, String(opt));
-        renderSeg();
-      });
+      b.addEventListener(
+        "click",
+        () => {
+          commitWidgetValue(controlWidget, node, String(opt));
+          renderSeg();
+        },
+        { signal },
+      );
       seg.appendChild(b);
       segButtons.push(b);
     }
@@ -659,19 +713,52 @@ function buildSeedBody(
       restore.className = "tn-history-restore";
       restore.textContent = "Restore";
       item.append(num, restore);
-      item.addEventListener("click", () => {
-        if (locked) return;
-        setCurrent(seed);
-      });
+      item.addEventListener(
+        "click",
+        () => {
+          if (locked) return;
+          setCurrent(seed);
+        },
+        { signal },
+      );
       historyList.appendChild(item);
     }
   }
   renderHistory();
 
+  root.append(valueWrap, keypad, actionRow);
+  if (controlWrap) root.append(controlWrap);
+  root.append(historyWrap);
+
+  return {
+    el: root,
+    getSeed: () => current,
+    getValue: () => seedToWidgetValue(current),
+    focus: () => valueInput.focus(),
+    recordHistory: () => {
+      SEED_HISTORY.set(widget, nextSeedHistory(SEED_HISTORY.get(widget) ?? [], current));
+      renderHistory();
+    },
+    destroy: () => ac.abort(),
+  };
+}
+
+// The self-committing modal wrapper. Reuses the inline control above and adds
+// the on-canvas commit affordance: an explicit Apply button so the user can
+// dial in a value before writing it back (additive — dismiss without Apply
+// leaves the workflow untouched). This path owns its own commit; the provider
+// path (below) does not, letting the host editor drive writeback instead.
+function buildSeedBody(
+  widget: PatchedWidget,
+  node: NumericNode | null,
+  controlWidget: PatchedWidget | null,
+  modal: SeedModal,
+): HTMLDivElement {
+  const control = buildSeedControl(widget, node, controlWidget);
+
   // --- footer apply / cancel ---------------------------------------
   // The modal-shell footer is a status strip; commit happens via an explicit
-  // Apply button so the user can dial in a value before writing it back
-  // (additive — dismiss without Apply leaves the workflow untouched).
+  // Apply button so the user can dial in a value before writing it back.
   const commitRow = document.createElement("div");
   commitRow.className = "tn-row";
   const applyBtn = document.createElement("button");
@@ -679,10 +766,8 @@ function buildSeedBody(
   applyBtn.className = "tn-btn tn-btn-primary";
   applyBtn.textContent = "Apply seed";
   applyBtn.addEventListener("click", () => {
-    const value = seedToWidgetValue(current);
-    commitWidgetValue(widget, node, value);
-    SEED_HISTORY.set(widget, nextSeedHistory(SEED_HISTORY.get(widget) ?? [], current));
-    renderHistory();
+    commitWidgetValue(widget, node, control.getValue());
+    control.recordHistory();
     modal.close();
   });
   const cancelBtn = document.createElement("button");
@@ -692,10 +777,8 @@ function buildSeedBody(
   cancelBtn.addEventListener("click", () => modal.close());
   commitRow.append(applyBtn, cancelBtn);
 
-  root.append(valueWrap, keypad, actionRow);
-  if (controlWrap) root.append(controlWrap);
-  root.append(historyWrap, commitRow);
-  return root;
+  control.el.append(commitRow);
+  return control.el;
 }
 
 function openSeedModal(widget: PatchedWidget, node: NumericNode | null): void {
@@ -710,6 +793,45 @@ function openSeedModal(widget: PatchedWidget, node: NumericNode | null): void {
   });
   modal.bodyEl.appendChild(buildSeedBody(widget, node, controlWidget, modal));
 }
+
+// ============================================================
+// Field provider — inline control for host editors (comfyui-prompt-editor)
+// ============================================================
+
+// Register the seed keypad as a cross-pack field provider. A host editor
+// (e.g. comfyui-prompt-editor) resolves this for its `seed` field and mounts
+// the returned FieldControl.el INLINE in the field row — it never opens this
+// pack's on-canvas modal (that would stack two backdrops; see kit ADR-0001).
+// The control does not self-commit: getValue()/hasChanged() let the editor
+// drive write-back. Additive — if this pack isn't installed, nothing registers
+// and the editor falls back to its built-in <input>.
+registerFieldProvider({
+  id: "touch-numeric:seed",
+  // Higher wins when multiple providers match the same widget.
+  priority: 10,
+  // Reuse the shared profile resolver as the match predicate.
+  match: (widget) => widgetProfile(widget as PatchedWidget) === "seed",
+  create: (ctx: FieldControlContext): FieldControl => {
+    ensureStyle();
+    const widget = ctx.widget as PatchedWidget;
+    const node = (ctx.node ?? null) as NumericNode | null;
+    const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
+    const control = buildSeedControl(widget, node, controlWidget);
+    // Captured seed at open time; the editor commits getValue() and only
+    // churns the widget when hasChanged() reports a diff from this baseline.
+    const initialSeed = widgetValueToSeed(ctx.initialValue);
+    return {
+      el: control.el,
+      // Native type (Number when it fits, else decimal string) for verbatim commit.
+      getValue: () => control.getValue(),
+      hasChanged: () => control.getSeed() !== initialSeed,
+      focus: () => control.focus(),
+      destroy: () => control.destroy(),
+    };
+  },
+  // TODO(v0.2): register a second provider ("touch-numeric:numeric") once the
+  // generic numeric profile lands (see the openModal TODO below).
+});
 
 // ============================================================
 // Modal dispatch (profile -> opener)
@@ -735,28 +857,15 @@ function enhanceNode(node: NumericNode): void {
     if (w._touchNumericPatched) continue; // guard against double-patching
     w._touchNumericPatched = true;
 
-    // Strategy A: wrap onPointerDown. Chain to the original first; only open
-    // our modal if the original didn't consume the event. Fall back to the
-    // native control on dismiss/error (additive — never break the widget).
-    const origDown = w.onPointerDown;
-    w.onPointerDown = function (
-      this: PatchedWidget,
-      pointer: unknown,
-      ownerNode: NumericNode,
-      canvas: NumericCanvas,
-    ): boolean | undefined {
-      try {
-        if (typeof origDown === "function") {
-          const consumed = origDown.call(this, pointer, ownerNode, canvas);
-          if (consumed) return consumed;
-        }
-        // openModal returns a boolean; consume the event only when we took over.
-        return openModal(w, ownerNode || node);
-      } catch (e) {
-        console.warn(`[${EXT_NAME}] modal open failed`, e);
-        return false; // fall back to native on error
-      }
-    };
+    // Adopt the kit coordinator's shared chain-then-consume wrapper: it chains
+    // the original onPointerDown, honors its consumed-return, calls our opener
+    // otherwise, and falls back to the native control on error — the exact
+    // contract this pack previously hand-rolled (additive; never break the
+    // widget). openModal returns a boolean so the event is consumed only when
+    // we took over.
+    patchWidgetPointer(w as unknown as PointerPatchableWidget, (_pointer, ownerNode) =>
+      openModal(w, (ownerNode as NumericNode) || node),
+    );
   }
 }
 

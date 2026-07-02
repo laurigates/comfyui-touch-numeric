@@ -85,6 +85,7 @@ Architecture decisions live in `docs/blueprint/adrs/`.
 | ADR | Status | Decision |
 |-----|--------|----------|
 | [ADR-0001](docs/blueprint/adrs/0001-adopt-typescript-bun-build.md) | Accepted | Adopt TypeScript + `bun build`; consume `@laurigates/comfy-modal-kit` (inlined). Supersedes the prior single-file vanilla-JS + vendored-primitives architecture documented in `docs/IMPLEMENTATION-PLAN.md`. |
+| [ADR-0002](docs/blueprint/adrs/0002-adopt-field-provider-and-click-coordination.md) | Accepted | Register a `seed` field provider (`touch-numeric:seed`) and adopt `patchWidgetPointer` from `@laurigates/comfy-modal-kit@^0.4.0`, so the keypad renders inline inside `comfyui-prompt-editor`. References kit ADR-0001. Additive; the on-canvas modal path is unchanged. |
 
 The single-file vanilla-JS approach and the vendored `modal-shell.js` /
 `modal-fuzzy.js` copies (previously described in `docs/IMPLEMENTATION-PLAN.md`)
