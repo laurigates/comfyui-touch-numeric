@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.12...comfyui-touch-numeric-v0.1.13) (2026-07-02)
+
+
+### Features
+
+* register a seed field provider with comfy-modal-kit ([#42](https://github.com/laurigates/comfyui-touch-numeric/issues/42)) ([1a9d64f](https://github.com/laurigates/comfyui-touch-numeric/commit/1a9d64f08081543f13c1961e38c0e7ae031a4730))
+
 ## [0.1.12](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.11...comfyui-touch-numeric-v0.1.12) (2026-06-28)
 
 
