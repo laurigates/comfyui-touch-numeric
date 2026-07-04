@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.13...comfyui-touch-numeric-v0.1.14) (2026-07-04)
+
+
+### Bug Fixes
+
+* **instrumentation:** notify() on invalid seed input + real README description ([#45](https://github.com/laurigates/comfyui-touch-numeric/issues/45)) ([a60439b](https://github.com/laurigates/comfyui-touch-numeric/commit/a60439ba1f12732884279eed6634c7cb22e4ca6d))
+
 ## [0.1.13](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.12...comfyui-touch-numeric-v0.1.13) (2026-07-02)
 
 
