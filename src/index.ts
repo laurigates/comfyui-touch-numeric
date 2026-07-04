@@ -33,6 +33,7 @@
 import {
   type FieldControl,
   type FieldControlContext,
+  notify,
   openModalShell,
   type PointerPatchableWidget,
   patchWidgetPointer,
@@ -573,7 +574,19 @@ function buildSeedControl(
         return;
       }
       const parsed = parseSeedInput(valueInput.value);
-      if (parsed !== null) current = clampToBounds(parsed);
+      if (parsed !== null) {
+        current = clampToBounds(parsed);
+      } else if (valueInput.value.trim() !== "") {
+        // Non-empty but unparseable (decimal, hex, negative, sign-only, or a
+        // stray non-digit — most often a paste). Surface a copyable, auto-
+        // dismissing warning instead of silently ignoring it. An empty /
+        // whitespace field stays silent: that's a mid-edit clear, not an error.
+        notify({
+          severity: "warn",
+          summary: "Invalid seed",
+          detail: `"${valueInput.value}" isn't a non-negative integer; keeping ${current.toString()}.`,
+        });
+      }
     },
     { signal },
   );

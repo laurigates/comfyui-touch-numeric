@@ -34,7 +34,27 @@ Restart ComfyUI; hard-refresh the browser tab (Ctrl+Shift+R / Cmd+Shift+R).
 
 ## What it does
 
-TODO — describe the widgets it enhances and the modal it opens.
+Detects `seed` / `noise_seed` widgets (and other INT/FLOAT numeric widgets)
+**by name** and folds their controls into one touch-friendly modal opened via
+`widget.onPointerDown` — additive, with graceful fallback to the native widget
+when there's no match. The modal gives you:
+
+- **A big keypad + paste field** — tap the digits or paste an 18-digit value;
+  input is parsed and clamped to the widget's bounds (`[0, 0xffffffffffffffff]`
+  for seeds), kept as an exact BigInt so no precision is lost.
+- **One-tap Randomize** — a cryptographically-random (`crypto.getRandomValues`)
+  64-bit-safe integer, generated and clamped within the widget's bounds.
+- **Lock** — freeze the value so Randomize and edits are ignored until unlocked.
+- **`control_after_generate` as a segmented control** — the adjacent core combo
+  rendered as a 4-state toggle (Fixed / Increment / Decrement / Randomize).
+- **Per-session seed history** — recent values (newest first), tap-to-restore;
+  in-memory only, cleared on reload.
+
+Because it registers a `seed` field provider with
+[`@laurigates/comfy-modal-kit`](https://github.com/laurigates/comfy-modal-kit),
+the same keypad also renders **inline** inside the
+[prompt-editor](https://github.com/laurigates/comfyui-prompt-editor) modal — no
+separate integration needed.
 
 ## Compatibility
 
