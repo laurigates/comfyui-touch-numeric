@@ -1,84 +1,13 @@
 // node_modules/@laurigates/comfy-modal-kit/dist/index.js
-var KEY = Symbol.for("laurigates.comfyModalKit");
-function getKit() {
-  const g = globalThis;
-  let kit = g[KEY];
-  if (!kit) {
-    kit = { fieldProviders: [], activeModal: null, pointerClaim: null };
-    g[KEY] = kit;
-  }
-  return kit;
-}
-function registerFieldProvider(provider) {
-  const list = getKit().fieldProviders;
-  const i = list.findIndex((p) => p.id === provider.id);
-  if (i >= 0) {
-    list.splice(i, 1, provider);
-  } else {
-    list.push(provider);
-  }
-}
-var guardInstalled = false;
-function setActiveModal(handle) {
-  installPointerGuard();
-  dismissActiveModal();
-  getKit().activeModal = handle;
-}
-function dismissActiveModal() {
-  const kit = getKit();
-  const active = kit.activeModal;
-  if (!active)
+function ensureStyleOnce(id, css) {
+  if (typeof document === "undefined")
     return;
-  kit.activeModal = null;
-  try {
-    active.close();
-  } catch (e) {
-    console.warn("[comfy-modal-kit] active modal close() threw", e);
-  }
-}
-function getActiveModal() {
-  return getKit().activeModal;
-}
-function patchWidgetPointer(widget, opener) {
-  const original = widget.onPointerDown;
-  function patched(pointer, node, canvas) {
-    try {
-      if (typeof original === "function") {
-        const consumed = original.call(this, pointer, node, canvas);
-        if (consumed)
-          return consumed;
-      }
-      return opener(pointer, node, canvas);
-    } catch (e) {
-      console.warn("[comfy-modal-kit] patched onPointerDown threw", e);
-      return false;
-    }
-  }
-  widget.onPointerDown = patched;
-  return {
-    restore() {
-      widget.onPointerDown = original;
-    }
-  };
-}
-function installPointerGuard() {
-  if (guardInstalled)
+  if (document.getElementById(id))
     return;
-  if (typeof window === "undefined")
-    return;
-  guardInstalled = true;
-  window.addEventListener("pointerdown", pointerGuard, true);
-}
-function pointerGuard(e) {
-  const active = getKit().activeModal;
-  if (!active)
-    return;
-  const target = e.target;
-  if (active.element && target && active.element.contains(target)) {
-    return;
-  }
-  e.stopImmediatePropagation();
-  dismissActiveModal();
+  const s = document.createElement("style");
+  s.id = id;
+  s.textContent = css;
+  document.head.appendChild(s);
 }
 var STYLE_ID = "cmn-notify-style";
 var CONTAINER_ID = "cmn-notify-container";
@@ -205,16 +134,6 @@ var CSS = `
 .cmn-copy:hover  { background: #34343f; color: #fff; }
 .cmn-copy.cmn-copied { background: #2f4a30; border-color: #4caf50; color: #cfe8d0; }
 `;
-function ensureStyle() {
-  if (typeof document === "undefined")
-    return;
-  if (document.getElementById(STYLE_ID))
-    return;
-  const s = document.createElement("style");
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
-}
 function ensureContainer() {
   let c = document.getElementById(CONTAINER_ID);
   if (!c) {
@@ -231,7 +150,7 @@ function notify(opts) {
     console.info(`[notify] ${severity}: ${summary}${detail ? ` — ${detail}` : ""}`);
     return null;
   }
-  ensureStyle();
+  ensureStyleOnce(STYLE_ID, CSS);
   const container = ensureContainer();
   const life = opts.life ?? defaultLife(severity);
   const copyable = opts.copyable ?? defaultCopyable(severity);
@@ -292,6 +211,87 @@ function notify(opts) {
     timer = setTimeout(close, life);
   }
   return { close, el: toast };
+}
+var KEY = Symbol.for("laurigates.comfyModalKit");
+function getKit() {
+  const g = globalThis;
+  let kit = g[KEY];
+  if (!kit) {
+    kit = { fieldProviders: [], activeModal: null, pointerClaim: null };
+    g[KEY] = kit;
+  }
+  return kit;
+}
+function registerFieldProvider(provider) {
+  const list = getKit().fieldProviders;
+  const i = list.findIndex((p) => p.id === provider.id);
+  if (i >= 0) {
+    list.splice(i, 1, provider);
+  } else {
+    list.push(provider);
+  }
+}
+var guardInstalled = false;
+function setActiveModal(handle) {
+  installPointerGuard();
+  dismissActiveModal();
+  getKit().activeModal = handle;
+}
+function dismissActiveModal() {
+  const kit = getKit();
+  const active = kit.activeModal;
+  if (!active)
+    return;
+  kit.activeModal = null;
+  try {
+    active.close();
+  } catch (e) {
+    console.warn("[comfy-modal-kit] active modal close() threw", e);
+  }
+}
+function getActiveModal() {
+  return getKit().activeModal;
+}
+function patchWidgetPointer(widget, opener) {
+  const original = widget.onPointerDown;
+  function patched(pointer, node, canvas) {
+    try {
+      if (typeof original === "function") {
+        const consumed = original.call(this, pointer, node, canvas);
+        if (consumed)
+          return consumed;
+      }
+      return opener(pointer, node, canvas);
+    } catch (e) {
+      console.warn("[comfy-modal-kit] patched onPointerDown threw", e);
+      return false;
+    }
+  }
+  widget.onPointerDown = patched;
+  return {
+    restore() {
+      widget.onPointerDown = original;
+    }
+  };
+}
+function installPointerGuard() {
+  if (guardInstalled)
+    return;
+  if (typeof window === "undefined")
+    return;
+  guardInstalled = true;
+  window.addEventListener("pointerdown", pointerGuard, true);
+}
+function pointerGuard(e) {
+  const active = getKit().activeModal;
+  if (!active)
+    return;
+  const target = e.target;
+  if (active.element && target && active.element.contains(target)) {
+    return;
+  }
+  e.stopImmediatePropagation();
+  dismissActiveModal();
 }
 var STYLE_ID2 = "cmp-shell-style";
 var CSS2 = `
@@ -443,16 +443,8 @@ var CSS2 = `
     color: #b8b8c0;
 }
 `;
-function ensureStyle2() {
-  if (document.getElementById(STYLE_ID2))
-    return;
-  const s = document.createElement("style");
-  s.id = STYLE_ID2;
-  s.textContent = CSS2;
-  document.head.appendChild(s);
-}
 function openModalShell(opts = {}) {
-  ensureStyle2();
+  ensureStyleOnce(STYLE_ID2, CSS2);
   const backdrop = document.createElement("div");
   backdrop.className = "cmp-backdrop";
   const dialog = document.createElement("div");
@@ -865,14 +857,6 @@ var CSS3 = `
     padding: 8px 2px;
 }
 `;
-function ensureStyle3() {
-  if (document.getElementById(STYLE_ID3))
-    return;
-  const s = document.createElement("style");
-  s.id = STYLE_ID3;
-  s.textContent = CSS3;
-  document.head.appendChild(s);
-}
 function commitWidgetValue(widget, node, value) {
   widget.value = value;
   if (widget.inputEl && typeof widget.inputEl.value === "string") {
@@ -1086,7 +1070,7 @@ function buildSeedBody(widget, node, controlWidget, modal) {
   return control.el;
 }
 function openSeedModal(widget, node) {
-  ensureStyle3();
+  ensureStyleOnce(STYLE_ID3, CSS3);
   const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
   const modal = openModalShell({
     title: "Seed",
@@ -1102,7 +1086,7 @@ registerFieldProvider({
   priority: 10,
   match: (widget) => widgetProfile(widget) === "seed",
   create: (ctx) => {
-    ensureStyle3();
+    ensureStyleOnce(STYLE_ID3, CSS3);
     const widget = ctx.widget;
     const node = ctx.node ?? null;
     const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);

@@ -31,6 +31,7 @@
 // @laurigates/comfy-modal-kit, which `bun build` INLINES into web/dist (not an
 // external import). See ADR-0001.
 import {
+  ensureStyleOnce,
   type FieldControl,
   type FieldControlContext,
   notify,
@@ -447,14 +448,6 @@ const CSS = `
 }
 `;
 
-function ensureStyle(): void {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement("style");
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
-}
-
 // ============================================================
 // Widget commit
 // ============================================================
@@ -795,7 +788,7 @@ function buildSeedBody(
 }
 
 function openSeedModal(widget: PatchedWidget, node: NumericNode | null): void {
-  ensureStyle();
+  ensureStyleOnce(STYLE_ID, CSS);
   const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
   const modal = openModalShell({
     title: "Seed",
@@ -825,7 +818,7 @@ registerFieldProvider({
   // Reuse the shared profile resolver as the match predicate.
   match: (widget) => widgetProfile(widget as PatchedWidget) === "seed",
   create: (ctx: FieldControlContext): FieldControl => {
-    ensureStyle();
+    ensureStyleOnce(STYLE_ID, CSS);
     const widget = ctx.widget as PatchedWidget;
     const node = (ctx.node ?? null) as NumericNode | null;
     const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
