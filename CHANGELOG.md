@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.14...comfyui-touch-numeric-v0.1.15) (2026-07-17)
+
+
+### Bug Fixes
+
+* **registry:** shrink registry tarball scan surface + hygiene guard ([#49](https://github.com/laurigates/comfyui-touch-numeric/issues/49)) ([9bc9728](https://github.com/laurigates/comfyui-touch-numeric/commit/9bc972811e4b1f059d6ca0763125fd187eabde68))
+
 ## [0.1.14](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.13...comfyui-touch-numeric-v0.1.14) (2026-07-04)
 
 
