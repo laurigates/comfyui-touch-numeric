@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.15...comfyui-touch-numeric-v0.1.16) (2026-07-30)
+
+
+### Features
+
+* **assets:** restyle the banner to the vector family ([#54](https://github.com/laurigates/comfyui-touch-numeric/issues/54)) ([2468276](https://github.com/laurigates/comfyui-touch-numeric/commit/24682761f72d0b221062a1aede8fc777b8c4145a))
+
 ## [0.1.15](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.14...comfyui-touch-numeric-v0.1.15) (2026-07-17)
 
 
