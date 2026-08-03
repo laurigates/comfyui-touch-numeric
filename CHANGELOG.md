@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.16...comfyui-touch-numeric-v0.1.17) (2026-08-03)
+
+
+### Bug Fixes
+
+* **seed:** drop the duplicate control_after_generate + lock when mounted inline ([#56](https://github.com/laurigates/comfyui-touch-numeric/issues/56)) ([153eb83](https://github.com/laurigates/comfyui-touch-numeric/commit/153eb83b8c238ab7713089d734b0997b92ba8612))
+
 ## [0.1.16](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.15...comfyui-touch-numeric-v0.1.16) (2026-07-30)
 
 
