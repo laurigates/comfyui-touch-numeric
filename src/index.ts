@@ -17,10 +17,13 @@
 //   - keypad / paste field that lands the 18-digit value the native
 //     drag-scrub cannot,
 //   - one-tap Randomize (crypto.getRandomValues, 64-bit-safe integer),
-//   - Lock toggle,
+//   - a keypad-lock toggle,
 //   - the adjacent `control_after_generate` combo rendered as a 4-state
 //     segmented control (Fixed / Increment / Decrement / Randomize),
 //   - in-memory per-session seed history with tap-to-restore (numbers only).
+//
+// The last two are MODAL-ONLY. Mounted inline in a host editor they are wrong
+// rather than merely redundant — see SeedControlOptions.variant below.
 //
 // The v0.2 generic numeric profile (cfg/steps/denoise/... keypad + steppers +
 // bounded slider) slots into the profile dispatch in enhanceNode() — see the
@@ -507,18 +510,50 @@ interface SeedControl {
   destroy: () => void;
 }
 
+/** Which surface the control is being mounted on. See `variant` below. */
+export interface SeedControlOptions {
+  /**
+   * `"modal"` — this pack's own canvas modal. It owns commit (an explicit
+   * Apply button), and it is the only widget editor on screen, so the
+   * keypad-lock latch and the adjacent `control_after_generate` segmented
+   * control both belong here.
+   *
+   * `"inline"` — mounted by a HOST editor (comfyui-prompt-editor) through the
+   * kit's field registry. Both of those affordances are omitted, because the
+   * host's contract makes them incoherent rather than merely redundant:
+   *
+   *   - The host renders its own row for EVERY widget on the node, including
+   *     `control_after_generate`. A segmented control here is a second UI for
+   *     one widget — and the two disagree on timing: the segment writes
+   *     through `commitWidgetValue` immediately while the host's `<select>`
+   *     defers to Save. Tapping the segment and then saving lets the host's
+   *     staler deferred value overwrite the newer live one, with the segment
+   *     still highlighting the value that just lost.
+   *   - The lock latch is closure-local and gates neither `getValue()` nor
+   *     `hasChanged()`, so the host commits on Save no matter what the padlock
+   *     shows. It also cannot survive the row being discarded.
+   *
+   * Defaults to `"modal"` — the standalone surface, which is the one that
+   * needs no host cooperation.
+   */
+  variant?: "modal" | "inline";
+}
+
 // The reusable inline DOM builder, SPLIT from the self-committing modal
-// wrapper. Builds the value field, keypad, randomize/lock, the adjacent
-// `control_after_generate` segmented control, and the session history list —
-// but attaches NO Apply/commit affordance and never writes back to the seed
-// widget. Callers (the modal wrapper below, or the field provider) own commit.
-// All listeners hang off one AbortController so `destroy()` removes them at
-// once when a host editor discards the row.
-function buildSeedControl(
+// wrapper. Builds the value field, keypad, randomize, the session history
+// list, and — in the "modal" variant only — the keypad lock and the adjacent
+// `control_after_generate` segmented control. It attaches NO Apply/commit
+// affordance and never writes back to the SEED widget; callers (the modal
+// wrapper below, or the field provider) own that. All listeners hang off one
+// AbortController so `destroy()` removes them at once when a host editor
+// discards the row.
+export function buildSeedControl(
   widget: PatchedWidget,
   node: NumericNode | null,
   controlWidget: PatchedWidget | null,
+  { variant = "modal" }: SeedControlOptions = {},
 ): SeedControl {
+  const inline = variant === "inline";
   const ac = new AbortController();
   const { signal } = ac;
 
@@ -629,28 +664,43 @@ function buildSeedControl(
     { signal },
   );
 
-  const lockBtn = document.createElement("button");
-  lockBtn.type = "button";
-  lockBtn.className = "tn-btn";
-  function renderLock(): void {
-    lockBtn.textContent = locked ? "\u{1F512} Locked" : "\u{1F513} Lock";
-    lockBtn.classList.toggle("tn-on", locked);
-    valueInput.disabled = locked;
+  actionRow.append(randomBtn);
+
+  // The latch is MODAL-ONLY. It guards the keypad, the value field, Randomize
+  // and history restore — but not Apply, and not getValue()/hasChanged(), so a
+  // host editor commits straight past it. Named "Keypad lock" rather than
+  // "Lock" because sitting beside an "After generate" control the bare word
+  // reads as `control_after_generate: fixed`, which is the one thing it does
+  // NOT gate.
+  if (!inline) {
+    const lockBtn = document.createElement("button");
+    lockBtn.type = "button";
+    lockBtn.className = "tn-btn";
+    const renderLock = (): void => {
+      lockBtn.textContent = locked ? "\u{1F512} Keypad locked" : "\u{1F513} Keypad lock";
+      lockBtn.classList.toggle("tn-on", locked);
+      valueInput.disabled = locked;
+    };
+    lockBtn.addEventListener(
+      "click",
+      () => {
+        locked = !locked;
+        renderLock();
+      },
+      { signal },
+    );
+    renderLock();
+    actionRow.append(lockBtn);
   }
-  lockBtn.addEventListener(
-    "click",
-    () => {
-      locked = !locked;
-      renderLock();
-    },
-    { signal },
-  );
-  renderLock();
-  actionRow.append(randomBtn, lockBtn);
 
   // --- control_after_generate segmented control ---------------------
+  // MODAL-ONLY, and for a correctness reason rather than a layout one: this
+  // segment writes through to the widget the instant it is tapped, while a
+  // host editor defers every field to Save. Rendered inline it becomes a
+  // second, live-writing UI for a widget the host is already showing — and the
+  // host's staler deferred value wins at write-back. See SeedControlOptions.
   let controlWrap: HTMLDivElement | null = null;
-  if (controlWidget && Array.isArray(controlWidget.options?.values)) {
+  if (!inline && controlWidget && Array.isArray(controlWidget.options?.values)) {
     // Use the node's own option order when present; else the core default.
     const optionValues = controlWidget.options.values.length
       ? controlWidget.options.values
@@ -822,15 +872,28 @@ registerFieldProvider({
     const widget = ctx.widget as PatchedWidget;
     const node = (ctx.node ?? null) as NumericNode | null;
     const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
-    const control = buildSeedControl(widget, node, controlWidget);
-    // Captured seed at open time; the editor commits getValue() and only
-    // churns the widget when hasChanged() reports a diff from this baseline.
-    const initialSeed = widgetValueToSeed(ctx.initialValue);
+    const control = buildSeedControl(widget, node, controlWidget, { variant: "inline" });
+    // Baseline for change detection: the control's OWN starting value, i.e.
+    // AFTER the unparseable->0 fallback and the bounds clamp it applies on
+    // open. Comparing against a raw parse of ctx.initialValue instead was a
+    // bug: that parse is null for an unparseable seed while getSeed() never
+    // is, so hasChanged() was unconditionally true and every Save churned an
+    // unreadable seed to 0 the user had never touched.
+    const startSeed = control.getSeed();
+    // ...but a PARSEABLE seed the control had to clamp into range on open is a
+    // real repair the host should write back, so report it as changed. The
+    // unparseable case is deliberately excluded: there was nothing to repair,
+    // 0 is a fallback, and writing it would fabricate a value the user never
+    // chose — which this pack's additive-only contract forbids.
+    const clampedOnOpen = (() => {
+      const parsed = widgetValueToSeed(ctx.initialValue);
+      return parsed !== null && parsed !== startSeed;
+    })();
     return {
       el: control.el,
       // Native type (Number when it fits, else decimal string) for verbatim commit.
       getValue: () => control.getValue(),
-      hasChanged: () => control.getSeed() !== initialSeed,
+      hasChanged: () => clampedOnOpen || control.getSeed() !== startSeed,
       focus: () => control.focus(),
       destroy: () => control.destroy(),
     };
