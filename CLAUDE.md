@@ -25,7 +25,7 @@ this pack only uses `openModalShell`.
 | `__init__.py` | Loader stub. Empty `NODE_CLASS_MAPPINGS`; exports `WEB_DIRECTORY = "./web/dist"`. |
 | `src/index.ts` | The extension: widget interception + seed modal. The build entry. |
 | `src/comfyui-shims.d.ts` | Types the served `/scripts/app.js` runtime import (via tsconfig `paths`). |
-| `web/dist/index.js` | **Generated** by `bun run build` (git-ignored). Served by ComfyUI. The kit is inlined here. |
+| `web/dist/index.js` | **Generated** by `bun run build`, but **committed** (see the hard rule below). Served by ComfyUI. The kit is inlined here. |
 | `tsconfig.json` | strict typecheck config (`noEmit` — bun emits, tsc only checks). |
 | `knip.json` | Unused-export / dependency check (entry `src/index.ts`). |
 | `package.json` | bun scripts (`build`, `typecheck`, `test`, `lint`, `knip`); kit is a runtime dep. |
@@ -39,9 +39,23 @@ this pack only uses `openModalShell`.
 - **Pack directory name is part of the URL.** The built `web/dist/index.js` is
   served at `/extensions/comfyui-touch-numeric/index.js`. Renaming the pack dir
   breaks every fetch. If unavoidable, sync `EXT_NAME` in `src/index.ts`.
-- **`web/dist/` is generated — never edit it.** Edit `src/index.ts` and run
-  `bun run build`. The dist tree is git-ignored and force-shipped to the
-  registry via `[tool.comfy] includes`.
+- **`web/dist/` is generated — never edit it, but always commit it.** Edit
+  `src/index.ts`, run `bun run build`, and commit the rebuilt bundle **in the
+  same commit as the source change**. CI enforces this with
+  `git diff --exit-code -- web/dist`, so a source-only commit fails.
+  It is tracked (not git-ignored) because ComfyUI-Manager installs and updates
+  packs over **git**: a `git clone` / `git fetch && merge --ff-only` pulls new
+  `src/` but can never pull an ignored `web/dist`, and nothing runs a build
+  afterward — so the update reports success while ComfyUI keeps serving the
+  stale bundle (diagnosed on the GPU box, comfyui-touch-manager#11 → #34 here).
+  The registry path is unaffected either way: `[tool.comfy] includes` force-ships
+  the bundle and `publish.yml` rebuilds it on the runner.
+  `.gitattributes` marks it `linguist-generated=true -diff -merge` so diffs and
+  merges stay sane.
+  Practical consequence: a `@laurigates/comfy-modal-kit` bump is a
+  **hand-authored PR** (bump `package.json`, refresh `bun.lock`, rebuild,
+  commit `web/dist` together) — a Renovate PR that touches only the manifest
+  fails CI by construction.
 - **No Python dependencies. The pack is frontend-only; a feature genuinely needing Python belongs in a separate companion pack.**
 - **Additive only.** Never clobber an existing tooltip/control; fall back to
   the native widget when there's no match. Never fabricate data.

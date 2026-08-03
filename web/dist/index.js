@@ -872,7 +872,8 @@ function commitWidgetValue(widget, node, value) {
   node?.setDirtyCanvas?.(true, true);
   app.graph?.setDirtyCanvas?.(true, true);
 }
-function buildSeedControl(widget, node, controlWidget) {
+function buildSeedControl(widget, node, controlWidget, { variant = "modal" } = {}) {
+  const inline = variant === "inline";
   const ac = new AbortController;
   const { signal } = ac;
   const root = document.createElement("div");
@@ -951,22 +952,25 @@ function buildSeedControl(widget, node, controlWidget) {
       return;
     setCurrent(randomSeedInRange(seedMin, seedMax));
   }, { signal });
-  const lockBtn = document.createElement("button");
-  lockBtn.type = "button";
-  lockBtn.className = "tn-btn";
-  function renderLock() {
-    lockBtn.textContent = locked ? "\uD83D\uDD12 Locked" : "\uD83D\uDD13 Lock";
-    lockBtn.classList.toggle("tn-on", locked);
-    valueInput.disabled = locked;
-  }
-  lockBtn.addEventListener("click", () => {
-    locked = !locked;
+  actionRow.append(randomBtn);
+  if (!inline) {
+    const lockBtn = document.createElement("button");
+    lockBtn.type = "button";
+    lockBtn.className = "tn-btn";
+    const renderLock = () => {
+      lockBtn.textContent = locked ? "\uD83D\uDD12 Keypad locked" : "\uD83D\uDD13 Keypad lock";
+      lockBtn.classList.toggle("tn-on", locked);
+      valueInput.disabled = locked;
+    };
+    lockBtn.addEventListener("click", () => {
+      locked = !locked;
+      renderLock();
+    }, { signal });
     renderLock();
-  }, { signal });
-  renderLock();
-  actionRow.append(randomBtn, lockBtn);
+    actionRow.append(lockBtn);
+  }
   let controlWrap = null;
-  if (controlWidget && Array.isArray(controlWidget.options?.values)) {
+  if (!inline && controlWidget && Array.isArray(controlWidget.options?.values)) {
     const optionValues = controlWidget.options.values.length ? controlWidget.options.values : CONTROL_OPTIONS;
     controlWrap = document.createElement("div");
     const controlLabel = document.createElement("div");
@@ -1092,12 +1096,16 @@ registerFieldProvider({
     const widget = ctx.widget;
     const node = ctx.node ?? null;
     const controlWidget = findAdjacentWidget(node, CONTROL_WIDGET_NAME);
-    const control = buildSeedControl(widget, node, controlWidget);
-    const initialSeed = widgetValueToSeed(ctx.initialValue);
+    const control = buildSeedControl(widget, node, controlWidget, { variant: "inline" });
+    const startSeed = control.getSeed();
+    const clampedOnOpen = (() => {
+      const parsed = widgetValueToSeed(ctx.initialValue);
+      return parsed !== null && parsed !== startSeed;
+    })();
     return {
       el: control.el,
       getValue: () => control.getValue(),
-      hasChanged: () => control.getSeed() !== initialSeed,
+      hasChanged: () => clampedOnOpen || control.getSeed() !== startSeed,
       focus: () => control.focus(),
       destroy: () => control.destroy()
     };
@@ -1148,5 +1156,6 @@ export {
   parseSeedInput,
   nextSeedHistory,
   findAdjacentWidget,
-  clampSeed
+  clampSeed,
+  buildSeedControl
 };
