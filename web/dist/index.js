@@ -676,6 +676,7 @@ var CONTROL_OPTIONS = ["fixed", "increment", "decrement", "randomize"];
 var MAX_SEED = (1n << 64n) - 1n;
 var SEED_HISTORY = new Map;
 var HISTORY_LIMIT = 24;
+var INLINE_HISTORY_ROWS = 5;
 function randomSeed64() {
   const buf = new Uint32Array(2);
   crypto.getRandomValues(buf);
@@ -915,6 +916,20 @@ var CSS3 = `
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
 }
+/* Mounted inline in a host editor, the rule above is actively harmful: the row
+   never gets a definite height, so there is nothing to scroll — but the element
+   still swallows the touch-scroll gesture, and overscroll-behavior:contain stops
+   it chaining back out to the host's single scroll region, freezing the field
+   list from that point down. RESET the properties rather than omitting them:
+   this block must follow .tn-history in source order, since both match the same
+   element and specificity alone would not decide it. The row cap in
+   renderHistory() is the other half — without a scroller, 24 entries would push
+   the rest of the host's fields far below the fold. */
+.tn-seed-inline .tn-history {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+}
 .tn-history-item {
     display: flex;
     justify-content: space-between;
@@ -965,7 +980,7 @@ function buildSeedControl(widget, node, controlWidget, { variant = "modal" } = {
   const ac = new AbortController;
   const { signal } = ac;
   const root = document.createElement("div");
-  root.className = "tn-seed";
+  root.className = inline ? "tn-seed tn-seed-inline" : "tn-seed";
   const { min: seedMin, max: seedMax } = seedBounds(widget);
   const clampToBounds = (n) => {
     const c = clampSeed(n);
@@ -1106,7 +1121,8 @@ function buildSeedControl(widget, node, controlWidget, { variant = "modal" } = {
       historyList.appendChild(empty);
       return;
     }
-    for (const seed of hist) {
+    const shown = inline ? hist.slice(0, INLINE_HISTORY_ROWS) : hist;
+    for (const seed of shown) {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "tn-history-item";
@@ -1122,6 +1138,12 @@ function buildSeedControl(widget, node, controlWidget, { variant = "modal" } = {
         setCurrent(seed);
       }, { signal });
       historyList.appendChild(item);
+    }
+    if (hist.length > shown.length) {
+      const more = document.createElement("div");
+      more.className = "tn-history-empty";
+      more.textContent = `+${hist.length - shown.length} more in the seed modal`;
+      historyList.appendChild(more);
     }
   }
   renderHistory();
