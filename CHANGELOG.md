@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.18...comfyui-touch-numeric-v0.1.19) (2026-08-04)
+
+
+### Bug Fixes
+
+* **seed:** stop the inline history trapping the host's scroll gesture ([#61](https://github.com/laurigates/comfyui-touch-numeric/issues/61)) ([211b40b](https://github.com/laurigates/comfyui-touch-numeric/commit/211b40b03bf5dff47bc04ddd5bcda92d730e6e03))
+
 ## [0.1.18](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.17...comfyui-touch-numeric-v0.1.18) (2026-08-04)
 
 
