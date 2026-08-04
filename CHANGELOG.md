@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.20](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.19...comfyui-touch-numeric-v0.1.20) (2026-08-04)
+
+
+### Bug Fixes
+
+* **modal:** name the touch-reachable exit in the seed modal's footer hint ([#64](https://github.com/laurigates/comfyui-touch-numeric/issues/64)) ([724d6a1](https://github.com/laurigates/comfyui-touch-numeric/commit/724d6a1292b6719764517d8238f693d0db31728d))
+
 ## [0.1.19](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.18...comfyui-touch-numeric-v0.1.19) (2026-08-04)
 
 
