@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.18](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.17...comfyui-touch-numeric-v0.1.18) (2026-08-04)
+
+
+### Bug Fixes
+
+* **deps:** bump @laurigates/comfy-modal-kit ^0.6.0 -&gt; ^0.10.0 ([f6c29d4](https://github.com/laurigates/comfyui-touch-numeric/commit/f6c29d4750edc2580193e0682c599097e2249244))
+* **deps:** bump @laurigates/comfy-modal-kit to ^0.10.0 (toast-tap dismisses modal) ([#59](https://github.com/laurigates/comfyui-touch-numeric/issues/59)) ([f6c29d4](https://github.com/laurigates/comfyui-touch-numeric/commit/f6c29d4750edc2580193e0682c599097e2249244))
+
 ## [0.1.17](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.16...comfyui-touch-numeric-v0.1.17) (2026-08-03)
 
 
