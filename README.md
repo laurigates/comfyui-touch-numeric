@@ -68,6 +68,11 @@ Save/Cancel. The keypad lock is per-dialog state the host cannot read, so it
 could never gate the host's Save. Both remain in this pack's own canvas modal,
 which owns its commit and is the only editor on screen.
 
+The seed history is also **capped to 5 rows inline**, with a "+N more" line
+pointing at the full list. The host modal owns the only scroll region, so the
+inline mount must not be a scroll container — otherwise it swallows the
+field-list scroll gesture without being able to chain it back out.
+
 ## Compatibility
 
 - ComfyUI: modern Vue frontend (`comfyui-frontend-package >= 1.40`) for the

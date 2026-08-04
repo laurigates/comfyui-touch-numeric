@@ -79,6 +79,11 @@ const MAX_SEED = (1n << 64n) - 1n;
 const SEED_HISTORY = new Map<PatchedWidget, bigint[]>();
 const HISTORY_LIMIT = 24;
 
+// How many history rows the INLINE variant renders. It has no scroller (a host
+// editor owns the only scroll region), so the list is capped and the remainder
+// is reachable in this pack's own modal.
+const INLINE_HISTORY_ROWS = 5;
+
 // ============================================================
 // Types — the narrow LiteGraph surface this pack reaches into
 // ============================================================
@@ -418,6 +423,20 @@ const CSS = `
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
 }
+/* Mounted inline in a host editor, the rule above is actively harmful: the row
+   never gets a definite height, so there is nothing to scroll — but the element
+   still swallows the touch-scroll gesture, and overscroll-behavior:contain stops
+   it chaining back out to the host's single scroll region, freezing the field
+   list from that point down. RESET the properties rather than omitting them:
+   this block must follow .tn-history in source order, since both match the same
+   element and specificity alone would not decide it. The row cap in
+   renderHistory() is the other half — without a scroller, 24 entries would push
+   the rest of the host's fields far below the fold. */
+.tn-seed-inline .tn-history {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: auto;
+}
 .tn-history-item {
     display: flex;
     justify-content: space-between;
@@ -558,7 +577,7 @@ export function buildSeedControl(
   const { signal } = ac;
 
   const root = document.createElement("div");
-  root.className = "tn-seed";
+  root.className = inline ? "tn-seed tn-seed-inline" : "tn-seed";
 
   // The widget's own inclusive [min, max]. Everything that sets `current`
   // funnels through clampToBounds so the control can never propose (or apply) a
@@ -759,7 +778,11 @@ export function buildSeedControl(
       historyList.appendChild(empty);
       return;
     }
-    for (const seed of hist) {
+    // Inline the list cannot scroll (see the .tn-seed-inline CSS reset), so it
+    // is capped instead: 24 entries at 44px would bury the host's remaining
+    // fields. The pack's own modal keeps the full list behind its scroller.
+    const shown = inline ? hist.slice(0, INLINE_HISTORY_ROWS) : hist;
+    for (const seed of shown) {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "tn-history-item";
@@ -778,6 +801,13 @@ export function buildSeedControl(
         { signal },
       );
       historyList.appendChild(item);
+    }
+    // Never silently truncate: say what was dropped and where to see it.
+    if (hist.length > shown.length) {
+      const more = document.createElement("div");
+      more.className = "tn-history-empty";
+      more.textContent = `+${hist.length - shown.length} more in the seed modal`;
+      historyList.appendChild(more);
     }
   }
   renderHistory();

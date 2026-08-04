@@ -127,6 +127,59 @@ describe("inline hasChanged() baseline", () => {
   });
 });
 
+describe("inline layout contract (the host owns the only scroll region)", () => {
+  // The kit's field-registry documents this: a control mounted inline never
+  // gets a definite height, so an internal scroller has nothing to scroll — yet
+  // it still swallows the touch-scroll gesture, and overscroll-behavior:contain
+  // stops that gesture chaining back out to the host's scroll region. The field
+  // and everything below it become unscrollable. Cross-pack harm: authored
+  // here, suffered in comfyui-prompt-editor.
+  //
+  // ensureStyleOnce injects the pack's stylesheet during create(), and jsdom
+  // resolves stylesheet rules through getComputedStyle — so this reads the
+  // REAL cascade, not inline styles (which never carried these declarations).
+  function scrollersIn(el) {
+    return [el, ...el.querySelectorAll("*")]
+      .filter((n) => /auto|scroll/.test(getComputedStyle(n).overflowY))
+      .map((n) => n.className);
+  }
+
+  it("mounts no scroll container anywhere inside the field row", () => {
+    const control = mountInline(makeNode());
+    expect(scrollersIn(control.el)).toEqual([]);
+  });
+
+  it("keeps the scroller in the pack's own modal, where the height IS definite", () => {
+    mountInline(makeNode()); // ensure the stylesheet is injected
+    const fixture = makeNode();
+    const control = buildSeedControl(fixture.seed, fixture.node, fixture.control, {
+      variant: "modal",
+    });
+    document.body.appendChild(control.el);
+    expect(scrollersIn(control.el)).toContain("tn-history");
+  });
+
+  it("caps how many history rows it renders inline", () => {
+    // Resetting overflow alone would let 24 entries push the rest of the host's
+    // field list far below the fold.
+    mountInline(makeNode());
+    const fixture = makeNode({ seedValue: 1 });
+    const control = buildSeedControl(fixture.seed, fixture.node, fixture.control, {
+      variant: "inline",
+    });
+    const keys = [...control.el.querySelectorAll(".tn-key")];
+    for (let i = 1; i <= 9; i++) {
+      keys.find((k) => k.textContent === "C").click();
+      keys.find((k) => k.textContent === String(i)).click();
+      control.recordHistory();
+    }
+    const rows = control.el.querySelectorAll(".tn-history-item").length;
+    expect(rows).toBeGreaterThan(0);
+    expect(rows).toBeLessThanOrEqual(5);
+    expect(control.el.textContent).toMatch(/more/i);
+  });
+});
+
 describe("modal variant (this pack's own canvas modal)", () => {
   it("keeps the segmented control — it owns its own commit here", () => {
     const fixture = makeNode();
