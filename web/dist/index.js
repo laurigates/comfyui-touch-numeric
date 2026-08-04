@@ -1192,7 +1192,7 @@ function openSeedModal(widget, node) {
     title: "Seed",
     subtitle: widget.name,
     showSearch: false,
-    footerLeftHTML: "<kbd>Esc</kbd> to dismiss without applying",
+    footerLeftHTML: "Cancel (or <kbd>Esc</kbd>) dismisses without applying",
     footerRightHTML: "Touch Numeric"
   });
   modal.bodyEl.appendChild(buildSeedBody(widget, node, controlWidget, modal));

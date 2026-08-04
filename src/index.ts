@@ -874,7 +874,10 @@ function openSeedModal(widget: PatchedWidget, node: NumericNode | null): void {
     title: "Seed",
     subtitle: widget.name,
     showSearch: false,
-    footerLeftHTML: "<kbd>Esc</kbd> to dismiss without applying",
+    // Name the touch-reachable exit FIRST. This is a touch-first pack, and a
+    // phone has no Esc key — a keycap was the only dismissal this hint offered,
+    // despite a Cancel button sitting in the body all along.
+    footerLeftHTML: "Cancel (or <kbd>Esc</kbd>) dismisses without applying",
     footerRightHTML: "Touch Numeric",
   });
   modal.bodyEl.appendChild(buildSeedBody(widget, node, controlWidget, modal));
