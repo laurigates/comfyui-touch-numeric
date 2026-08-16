@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.20...comfyui-touch-numeric-v0.1.21) (2026-08-16)
+
+
+### Miscellaneous
+
+* **ci:** guard registry-health against closing on Pending; drop duplicate Renovate runner ([#67](https://github.com/laurigates/comfyui-touch-numeric/issues/67)) ([9910b5f](https://github.com/laurigates/comfyui-touch-numeric/commit/9910b5ff2ee25859d24703bb19de4d843964e1f9))
+
 ## [0.1.20](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.19...comfyui-touch-numeric-v0.1.20) (2026-08-04)
 
 
