@@ -1257,15 +1257,15 @@ app.registerExtension({
   }
 });
 export {
-  widgetValueToSeed,
-  widgetProfile,
-  seedToWidgetValue,
-  seedBounds,
-  randomSeedInRange,
-  randomSeed64,
-  parseSeedInput,
-  nextSeedHistory,
-  findAdjacentWidget,
+  buildSeedControl,
   clampSeed,
-  buildSeedControl
+  findAdjacentWidget,
+  nextSeedHistory,
+  parseSeedInput,
+  randomSeed64,
+  randomSeedInRange,
+  seedBounds,
+  seedToWidgetValue,
+  widgetProfile,
+  widgetValueToSeed
 };
