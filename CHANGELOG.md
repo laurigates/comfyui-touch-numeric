@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.22](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.21...comfyui-touch-numeric-v0.1.22) (2026-10-29)
+
+
+### Bug Fixes
+
+* **deps:** bump @laurigates/comfy-modal-kit to ^0.14.0 and rebuild web/dist ([#72](https://github.com/laurigates/comfyui-touch-numeric/issues/72)) ([c7c5270](https://github.com/laurigates/comfyui-touch-numeric/commit/c7c527022024be7400cd6979df6dd1c4b10c4b83)), closes [#69](https://github.com/laurigates/comfyui-touch-numeric/issues/69)
+
 ## [0.1.21](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.20...comfyui-touch-numeric-v0.1.21) (2026-08-16)
 
 
