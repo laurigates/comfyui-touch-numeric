@@ -30,7 +30,7 @@ this pack only uses `openModalShell`.
 | `knip.json` | Unused-export / dependency check (entry `src/index.ts`). |
 | `package.json` | bun scripts (`build`, `typecheck`, `test`, `lint`, `knip`); kit is a runtime dep. |
 | `pyproject.toml` | Comfy Registry metadata. `[tool.comfy] includes = ["web/dist"]`. `PublisherId` + `version` are the fields you touch. |
-| `.github/workflows/` | `ci.yml` (ruff/biome/typecheck+build/pytest/vitest/gitleaks), `publish.yml` (bun build then auto-publish on version bump), `release-please.yml`. |
+| `.github/workflows/` | `ci.yml` (ruff/biome/typecheck+build/pytest/vitest/gitleaks — ComfyUI fully stubbed), `comfy-compat.yml` (daily against **real** ComfyUI: newest release + master; types/backend/browser tiers, one `comfy-compat` issue while red, optional draft fix PR — thin caller of `laurigates/comfy-modal-kit`'s reusable workflow, see its README), `publish.yml` (bun build then auto-publish on version bump), `release-please.yml`. |
 | `tests/` | pytest backend suite. `tests/js/` Vitest suite imports the pure helpers from `src/index.ts`. |
 | `justfile` | `lint`, `format`, `test`, `check` recipes — the local CI gate. |
 

@@ -3,5 +3,12 @@
   "extends": ["config:recommended"],
   "pre-commit": {
     "enabled": true
-  }
+  },
+  "packageRules": [
+    {
+      "description": "Keep the frontend types tracking upstream ComfyUI: bump the ^range itself (not only the lockfile) so the floor moves with each release. comfy-compat.yml typechecks against the exact version each ComfyUI ref pins.",
+      "matchPackageNames": ["@comfyorg/comfyui-frontend-types"],
+      "rangeStrategy": "bump"
+    }
+  ]
 }

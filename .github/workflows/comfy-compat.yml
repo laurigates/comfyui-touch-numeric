@@ -1,0 +1,45 @@
+name: ComfyUI compat
+
+# Runs this pack against REAL ComfyUI (newest release tag + master): the
+# frontend types that ref pins, a CPU backend load, and a Chromium smoke test
+# that `comfy.touch-numeric` registers without errors. ci.yml stubs ComfyUI
+# out; this is the check that it still works with the real thing.
+# Red runs keep one `comfy-compat` issue up to date and close it once green.
+# Thin caller — what it does, and how to run it locally, is in
+# laurigates/comfy-modal-kit/.github/workflows/comfy-compat.yml.
+
+on:
+  schedule:
+    - cron: "43 3 * * *" # daily 03:43 UTC
+  workflow_dispatch:
+    inputs:
+      comfyui-ref:
+        description: "ComfyUI tag/branch/SHA to test (empty: newest release + master)"
+        required: false
+        default: ""
+      auto-fix:
+        description: "Let Claude draft a fix PR if red"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  compat:
+    uses: laurigates/comfy-modal-kit/.github/workflows/comfy-compat.yml@main
+    # The union of what the called jobs request; GitHub validates all of them
+    # at startup, including the auto-fix ones that are skipped on a green run.
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    with:
+      comfyui-ref: ${{ inputs.comfyui-ref || '' }}
+      # Frontend-only pack: no node classes; the extension name is read from
+      # web/dist (comfy.touch-numeric).
+      auto-fix: ${{ github.event_name == 'schedule' || inputs.auto-fix == true }}
+      app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
