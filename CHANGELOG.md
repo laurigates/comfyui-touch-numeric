@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.23](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.22...comfyui-touch-numeric-v0.1.23) (2026-11-16)
+
+
+### Bug Fixes
+
+* **types:** move @comfyorg/comfyui-frontend-types to ^1.60.0 ([#85](https://github.com/laurigates/comfyui-touch-numeric/issues/85)) ([bd732a4](https://github.com/laurigates/comfyui-touch-numeric/commit/bd732a459fa8e97d427f0410d2d36fbda8380f34))
+
 ## [0.1.22](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.21...comfyui-touch-numeric-v0.1.22) (2026-10-29)
 
 
