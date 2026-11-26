@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.24](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.23...comfyui-touch-numeric-v0.1.24) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency playwright to v1.55.1 [security] ([#77](https://github.com/laurigates/comfyui-touch-numeric/issues/77)) ([c851080](https://github.com/laurigates/comfyui-touch-numeric/commit/c851080d699474023436b31d6a663709acedb5e9))
+
+
+### Miscellaneous
+
+* **claude:** reconcile Claude Code config with the repo baseline ([#82](https://github.com/laurigates/comfyui-touch-numeric/issues/82)) ([d9e0842](https://github.com/laurigates/comfyui-touch-numeric/commit/d9e0842ba723a64565beeb77436711760bd4a396))
+* **deps:** update dependency virtualenv to v21.14.10 [security] ([#87](https://github.com/laurigates/comfyui-touch-numeric/issues/87)) ([5f3abac](https://github.com/laurigates/comfyui-touch-numeric/commit/5f3abac99d614a62673c7b9d54cd113e3776dd7d))
+
 ## [0.1.23](https://github.com/laurigates/comfyui-touch-numeric/compare/comfyui-touch-numeric-v0.1.22...comfyui-touch-numeric-v0.1.23) (2026-11-16)
 
 
